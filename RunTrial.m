@@ -1,4 +1,4 @@
-function [data] = RunTrial(data, varargin)
+function [data] = RunTrial(data, practice, varargin)
 
 % To be run at the beginning of every trial
 %
@@ -7,7 +7,14 @@ function [data] = RunTrial(data, varargin)
 % 2. Show stimulus
 % 3. Response
 % 4. Feedback
-% 5. Save and return datas
+% 5. Save and return data
 
+% Generate stimuli
+
+% Show Stimuli
+
+% Get Response
+
+% Save Data
 
 end
