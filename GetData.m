@@ -30,13 +30,18 @@ data.exp.rightKey = KbName('RightArrow');
 data.stimuli.genMean = [-3 3];
 data.stimuli.genStd = 8;
   
-data.stimuli.contrast = [.15 .6];
-data.stimuli.variability = [0 4 10];
-data.stimuli.aspectRatio = 1.0;
+data.stimuli.contrastVal = [.15 .6];
+data.stimuli.variabilityVal = [0 4 10];
   
 data.stimuli.nSamples = 8; % number of gabors
 data.stimuli.gaborDimPix = 100;    
 data.stimuli.arrDiam = 200; % center screen -> center gabors
+
+data.stimuli.aspectRatio = 1.0;
+data.stimuli.frequency = 0.05;
+data.stimuli.envelopDev = 400;
+data.stimuli.noiseAmp = .1;
+data.stimuli.phase = pi*rand(data.stimuli.nSamples, data.exp.numTrials);
 
 % Calculate Stimuli position
 allAngles = linspace(0, 360, data.stimuli.nSamples+1); 
@@ -53,6 +58,7 @@ data.response.responseRight = NaN(1, data.exp.numTrials);
 data.response.correct = NaN(1, data.exp.numTrials);
 data.response.accuracy = NaN(1, data.exp.numTrials);
 data.response.reactionTime = NaN(1, data.exp.numTrials);
+
 data.response.cue = NaN(1, data.exp.numTrials);
 data.response.orientationMean = NaN(1, data.exp.numTrials);
 data.response.contrast = NaN(1, data.exp.numTrials);

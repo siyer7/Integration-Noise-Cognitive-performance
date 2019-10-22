@@ -21,7 +21,7 @@ directory = fullfile(pwd);
 fileName = fullfile(directory, [data.participant.name '.mat']);
 
 
-% Prepare Psychtoolbox
+% Prepare Psychtoolbox Stuff
 PsychDefaultSetup(2);
 
 screenNum = max(Screen('Screens'));
@@ -43,6 +43,15 @@ topPriorityLevel = MaxPriority(window);
 Priority(topPriorityLevel); % ERROR idk why :(
 
 Screen('TextSize', window, data.exp.directionTextSize);
+
+% Prepare Stimulus Stuff
+data.stimuli.aperture = CreateCircularApertureINT(data.stimuli.gaborDimPix, 1);
+
+posX = data.stimuli.posX';
+posY = data.stimuli.posY';
+gaborDim = data.stimuli.gaborDimPix;
+data.stimuli.gratingBoxes = repmat([xCenter yCenter], data.stimuli.nSamples, 2) ...
+    + [(posX-gaborDim) (posY-gaborDim) (posX+gaborDim) (posY+gaborDim)];
 
 %----------------
 % Run Experiment
@@ -68,13 +77,13 @@ Screen('Flip', window);
 KbStrokeWait;
 
 for i=1:data.exp.pTrials
-    data = RunTrial(data, 1); % 1 -> no save data  
+    data = RunTrial(data, 0); % 0 -> no save data  
 end
 
 % Run blocks
 for block=1:data.exp.numBlocks   
     for trial=1:data.exp.numTrialsPerBlock
-        data = RunTrial(data, 0); % 0 -> save data   
+        data = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial); % ~0 -> save data   
     end % end trials
    
     % Show block end info
@@ -103,4 +112,21 @@ SaveExit()
     end
 end
 
+
+%-----------------------------
+% Functions from Target Paper
+%-----------------------------
+
+function [patch] = CreateCircularApertureINT(siz,falloff)
+    if nargin < 2, falloff = 2; end
+    if nargin < 1, error('Not enough input arguments.'); end
+    
+    sigmoidfun = @(x,lims)lims(1)+diff(lims)./(1+exp(-x));
+    
+    [x,y] = meshgrid((1:siz)-round((siz)/2));
+    
+    coef = log(1/0.01-1)*2/falloff;
+    
+    patch = sigmoidfun(coef*(sqrt(x.^2+y.^2)-siz/2),[1,0]);
+end
 
