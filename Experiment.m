@@ -1,27 +1,27 @@
-function [success, data] = Experiment(varargin)
-
+function [data] = Experiment(varargin)
 % Main Code
-%
-% Outline
-% 
-% 1. Get subj data and parameters
-% 2. Prep Psychtoolbox
-% 3. Run Experiment
-% 4. Save Data
 
 % Clear Workspace
 close all;
 sca;
 clear vars;
 
+
+%% File handling
+directory = fullfile(pwd, 'data');
+
+% check existence (and make) directory
+if ~exist(directory, 'dir')
+    mkdir(directory);
+end
+
 % Get Subject Data and Parameters
-data = GetData();
+data = GetData(directory);
+ 
+fileName = fullfile(directory, [data.participant.subjectId '.mat']);
+fileNameEarly = fullfile(directory, [data.participant.subjectId 'EarlyQuit' '.mat']);
 
-directory = fullfile(pwd);
-fileName = fullfile(directory, [data.participant.name '.mat']);
-
-
-% Prepare Psychtoolbox Stuff
+%% Prepare Psychtoolbox Stuff
 PsychDefaultSetup(2);
 
 screenNum = max(Screen('Screens'));
@@ -30,7 +30,7 @@ black = [ 0  0  0];
 grey =  [.5 .5 .5];
 white = [ 1  1  1];
 
-[window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [310, 140, 1610, 940], 32, 2,...
+[window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [], 32, 2,...
         [], [],  kPsychNeed32BPCFloat);
 
 [xCenter, yCenter] = RectCenter(windowRect);
@@ -38,24 +38,28 @@ white = [ 1  1  1];
 Screen('BlendFunction', window, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 
 ifi = Screen('GetFlipInterval', window);
+stimShowTime = data.exp.stimShowTime;
+data.exp.stimFrames = round(stimShowTime/ifi);
 
 topPriorityLevel = MaxPriority(window);
-Priority(topPriorityLevel); % ERROR idk why :(
+Priority(topPriorityLevel);
+HideCursor(screenNum);
 
 Screen('TextSize', window, data.exp.directionTextSize);
 
 % Prepare Stimulus Stuff
 data.stimuli.aperture = CreateCircularApertureINT(data.stimuli.gaborDimPix, 1);
 
-posX = data.stimuli.posX';
+data.stimuli.fixBox = [xCenter yCenter xCenter yCenter] + [-1 -1 1 1].*2; % location of fixation
+
+posX = data.stimuli.posX'; 
 posY = data.stimuli.posY';
 gaborDim = data.stimuli.gaborDimPix;
 data.stimuli.gratingBoxes = repmat([xCenter yCenter], data.stimuli.nSamples, 2) ...
     + [(posX-gaborDim) (posY-gaborDim) (posX+gaborDim) (posY+gaborDim)];
 
-%----------------
-% Run Experiment
-%----------------
+
+%% Run Experiment
 
 % Display instructions
 DrawFormattedText(window, ['Welcome to the experiment! You will see an array of gratings.\n'...
@@ -66,9 +70,9 @@ DrawFormattedText(window, ['Welcome to the experiment! You will see an array of 
 
 Screen('Flip', window);
 KbStrokeWait;
+  
 
-
-% Run practice trials
+% Inform about practice trials
 DrawFormattedText(window, [sprintf('You will now see %i practice trials.\n', data.exp.pTrials)...
     'Press any key to continue...'],...
     'center','center', white);
@@ -76,16 +80,45 @@ DrawFormattedText(window, [sprintf('You will now see %i practice trials.\n', dat
 Screen('Flip', window);
 KbStrokeWait;
 
+Screen('TextSize', window, data.exp.cueTextSize);
+
+% Run practice trials
 for i=1:data.exp.pTrials
-    data = RunTrial(data, 0); % 0 -> no save data  
+    [data, timedOut, quit] = RunTrial(data, 0, window); % no save data 
+    if quit
+        Screen('CloseAll');
+        sca;
+        return
+    end
 end
 
+
+% Pre-block text
+Screen('TextSize', window, data.exp.directionTextSize);
+
+DrawFormattedText(window, 'Are you ready for Block 1?\nPress any button to continue...',...
+    'center','center', white);
+
+Screen('Flip', window);
+KbStrokeWait;
+
 % Run blocks
-for block=1:data.exp.numBlocks   
-    for trial=1:data.exp.numTrialsPerBlock
-        data = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial); % ~0 -> save data   
+block = 1;
+while block<=data.exp.numBlocks
+    
+    trial = 1;
+    while trial<=data.exp.numTrialsPerBlock
+        [data, timedOut, quit] = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial, window); % save data
+        
+        if quit
+            SaveExit();
+        end
+        
+        if ~timedOut
+            trial = trial + 1;
+        end
     end % end trials
-   
+    
     % Show block end info
     DrawFormattedText(window, [sprintf('You have finished %i blocks\n', block)...
         'You may choose to take a short break.\nPress any key to continue...'],...
@@ -95,27 +128,42 @@ for block=1:data.exp.numBlocks
     
     KbStrokeWait;
     
+    block = block + 1;
+    
 end % end blocks
 
-"trials ran"
+"trials ran" % DEBUG
 
-% Save Data
+%% Save Data
 SaveExit()
 
-    % Function: Save and Exit
-    function [] = SaveExit()
+    % Save and Exit
+    function [] = SaveExit(early)
+        if nargin==0
+            early=0;
+        end
+        
         Screen('CloseAll');
         sca;
         Priority(0);
-        %save(fileName, 'data') 
-        success = 1;
-    end
-end
+        
+        try % some trials have been performed
+            numTrials = data.exp.numTrialsPerBlock*(block-1) + trial;
+        catch % no trials --> don't save anything
+            return
+        end
+        
+        if early
+            save(fileNameEarly, 'data');
+        else
+            save(fileName, 'data');
+        end
+    end % end SaveExit
+
+end % end Experiment
 
 
-%-----------------------------
-% Functions from Target Paper
-%-----------------------------
+%% Functions from Target Paper
 
 function [patch] = CreateCircularApertureINT(siz,falloff)
     if nargin < 2, falloff = 2; end
