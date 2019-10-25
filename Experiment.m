@@ -18,8 +18,16 @@ end
 % Get Subject Data and Parameters
 data = GetData(directory);
  
-fileName = fullfile(directory, [data.participant.subjectId '.mat']);
-fileNameEarly = fullfile(directory, [data.participant.subjectId 'EarlyQuit' '.mat']);
+fileName = fullfile(directory, [data.participant.subjectId '-1.mat']);
+fileNameEarly = fullfile(directory, [data.participant.subjectId '-1-EarlyQuit' '.mat']);
+
+i = 1;
+while exist(fileName, 'file') || exist(fileNameEarly, 'file')
+    i = i+1;
+    fileName = fullfile(directory, [data.participant.subjectId sprintf('-%i', i) '.mat']);
+    fileNameEarly = fullfile(directory, [data.participant.subjectId sprintf('-%i', i) '-EarlyQuit' '.mat']);
+end
+
 
 %% Prepare Psychtoolbox Stuff
 PsychDefaultSetup(2);
@@ -30,7 +38,7 @@ black = [ 0  0  0];
 grey =  [.5 .5 .5];
 white = [ 1  1  1];
 
-[window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [], 32, 2,...
+[window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [0 0 900 600], 32, 2,...
         [], [],  kPsychNeed32BPCFloat);
 
 [xCenter, yCenter] = RectCenter(windowRect);
@@ -111,7 +119,8 @@ while block<=data.exp.numBlocks
         [data, timedOut, quit] = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial, window); % save data
         
         if quit
-            SaveExit();
+            SaveExit(quit);
+            return;
         end
         
         if ~timedOut
@@ -158,6 +167,7 @@ SaveExit()
         else
             save(fileName, 'data');
         end
+        "Succesfully Saved!"
     end % end SaveExit
 
 end % end Experiment

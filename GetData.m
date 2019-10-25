@@ -3,11 +3,11 @@ function [data] = GetData(directory, varargin)
 % Set all the experimental parameters here
 
 data = struct;
-data.participant.subjectId = 'TEST'%getSubjectId(directory, 'uncertaintyV1');
+data.participant.subjectId = getSubjectId(directory, 'uncertaintyV1');
 
 % Experimental Paramters
 data.exp.numBlocks = 1;
-data.exp.numTrialsPerBlock = 20;
+data.exp.numTrialsPerBlock = 10;
 data.exp.numTrials = data.exp.numBlocks * data.exp.numTrialsPerBlock;
 
 data.exp.pTrials = 1; % number of practice trials
