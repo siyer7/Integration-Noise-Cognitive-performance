@@ -6,8 +6,8 @@ data = struct;
 data.participant.subjectId = getSubjectId(directory, 'uncertaintyV1');
 
 % Experimental Paramters
-data.exp.numBlocks = 1;
-data.exp.numTrialsPerBlock = 10;
+data.exp.numBlocks = 36;
+data.exp.numTrialsPerBlock = 36;
 data.exp.numTrials = data.exp.numBlocks * data.exp.numTrialsPerBlock;
 
 data.exp.pTrials = 1; % number of practice trials
@@ -27,8 +27,11 @@ data.exp.directionTextSize = 40;
 % Keyboard Bindings
 KbName('UnifyKeyNames');
 data.exp.escapeKey = KbName('ESCAPE');
-data.exp.leftKey = KbName('LeftArrow');
-data.exp.rightKey = KbName('RightArrow');
+data.exp.leftKey = KbName('1');
+data.exp.rightKey = KbName('3');
+data.exp.high = KbName('8');
+data.exp.medium= KbName('5');
+data.exp.low = KbName('2');
 
 % Stimuli Parameters
 data.stimuli.genMean = [-3 3];
@@ -64,7 +67,9 @@ data.response.responseRight = NaN(1, data.exp.numTrials);
 data.response.correct = NaN(1, data.exp.numTrials);
 data.response.accuracy = NaN(1, data.exp.numTrials);
 data.response.reactionTime = NaN(1, data.exp.numTrials);
+data.response.confidence = NaN(1, data.exp.numTrials);
 
+data.response.isCuedBlock = NaN(1, data.exp.numTrials);
 data.response.cue = NaN(1, data.exp.numTrials);
 data.response.orientationMean = NaN(1, data.exp.numTrials);
 data.response.contrast = NaN(1, data.exp.numTrials);

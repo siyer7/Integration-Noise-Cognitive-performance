@@ -34,10 +34,30 @@ for i=1:data.stimuli.nSamples
     orientations(i) = randn*variability + genMean;
 end
 
-if binornd(1, 0.5)
-    cue = 0; % uninformative cue
-else
-    cue = sign(binornd(1, abs(correct-0.25)) - 0.5);
+% cue gen
+if trial
+    if data.response.isCuedBlock(:,trial)==0 % uncued block
+        cue = 0;
+        cueLet = 'N';
+    else                                     % cued block
+        cue = sign(binornd(1, abs(correct-0.25)) - 0.5);
+        switch cue
+            case -1
+                cueLet = 'L';
+            case 1
+                cueLet = 'R';
+        end
+    end
+else                                         % practice trials
+    cue = 1; % make this probabilistic as well
+    switch cue
+        case -1
+            cueLet = 'L';
+        case 0
+            cueLet = 'N';
+        case 1
+            cueLet = 'R';
+    end
 end
 
 % Generate Stimuli
@@ -49,15 +69,6 @@ for i=1:data.stimuli.nSamples % Generate Gabors
        contrast, data.stimuli.noiseAmp) .* data.stimuli.aperture;
 end
 
-% set cue letter
-switch cue
-    case -1
-        cueLet = 'L';
-    case 0
-        cueLet = 'N';
-    case 1
-        cueLet = 'R';
-end
 
 % show fixation point
 Screen('FillOval', window, [0 0 0], data.stimuli.fixBox);
@@ -113,6 +124,36 @@ while allowResponse
     end % kbDown
 end % while allowResponse
 
+% Get confidence report
+allowResponse = 1; % loop until response
+quit = 0; % default no quit
+while allowResponse && ~timedOut
+    [kbDown, sec, kbKey] = KbCheck; % get kb info and time
+    
+    DrawFormattedText(window, 'State confidence in your answer: 8(High), 5(Medium) or 2(Low).', 'center', 'center', [0 0 0]);
+    vbl = Screen('Flip', window); % don't clear screen%
+    
+    if kbDown==1  
+        if kbKey(data.exp.high)==1
+            'a'
+            allowResponse = 0;
+            confidence = 1
+        elseif kbKey(data.exp.medium)==1
+            'b'
+            allowResponse = 0;
+            confidence = 0
+        elseif kbKey(data.exp.low)==1
+            'c'
+            allowResponse = 0;
+            confidence = -1
+        elseif kbKey(data.exp.escapeKey)==1
+            allowResponse = 0;
+            quit = 1;
+            return
+        end % kbKey        
+    end % kbDown
+end% while allowResponse
+
 % set normal font size
 Screen('TextSize', window, data.exp.directionTextSize);
 
@@ -150,6 +191,9 @@ if trial && ~timedOut
     data.response.responseRight(:,trial) = response;
     data.response.accuracy(:,trial) = accuracy;
     data.response.reactionTime(:,trial) = RT;  
+  	data.response.confidence(:,trial) = confidence;  
+
+    
 end
 
 

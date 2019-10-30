@@ -6,7 +6,6 @@ close all;
 sca;
 clear vars;
 
-
 %% File handling
 directory = fullfile(pwd, 'data');
 
@@ -38,7 +37,7 @@ black = [ 0  0  0];
 grey =  [.5 .5 .5];
 white = [ 1  1  1];
 
-[window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [0 0 900 600], 32, 2,...
+[window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [1920 0 1920*2 1080], 32, 2,...
         [], [],  kPsychNeed32BPCFloat);
 
 [xCenter, yCenter] = RectCenter(windowRect);
@@ -51,7 +50,7 @@ data.exp.stimFrames = round(stimShowTime/ifi);
 
 topPriorityLevel = MaxPriority(window);
 Priority(topPriorityLevel);
-HideCursor(screenNum);
+HideCursor;
 
 Screen('TextSize', window, data.exp.directionTextSize);
 
@@ -71,8 +70,8 @@ data.stimuli.gratingBoxes = repmat([xCenter yCenter], data.stimuli.nSamples, 2) 
 
 % Display instructions
 DrawFormattedText(window, ['Welcome to the experiment! You will see an array of gratings.\n'...
-    'Press the LEFT KEY if more gratings are orientated Clockwise.\n'...
-    'Press the RIGHT KEY if more gratings are oriented Counter-Clockwise.\n'...,
+    'Press the 1 KEY if more gratings are orientated Clockwise.\n'...
+    'Press the 3 KEY if more gratings are oriented Counter-Clockwise.\n'...,
     'Press any key to continue...'],...
     'center','center', white);
 
@@ -85,6 +84,7 @@ DrawFormattedText(window, [sprintf('You will now see %i practice trials.\n', dat
     'Press any key to continue...'],...
     'center','center', white);
 
+
 Screen('Flip', window);
 KbStrokeWait;
 
@@ -92,6 +92,7 @@ Screen('TextSize', window, data.exp.cueTextSize);
 
 % Run practice trials
 for i=1:data.exp.pTrials
+    cueBlock= binornd(1,0.5); % 0.5 probability of block having or not having cues
     [data, timedOut, quit] = RunTrial(data, 0, window); % no save data 
     if quit
         Screen('CloseAll');
@@ -99,7 +100,6 @@ for i=1:data.exp.pTrials
         return
     end
 end
-
 
 % Pre-block text
 Screen('TextSize', window, data.exp.directionTextSize);
@@ -112,10 +112,20 @@ KbStrokeWait;
 
 % Run blocks
 block = 1;
+count_uncued=0
+count_cued=0
 while block<=data.exp.numBlocks
-    
-    trial = 1;
+    %%% ensuring no. of cued blocks= no.of uncued blocks
+    prob= (18-count_cued)/36
+    cueBlock= binornd(1,prob); % 0.5 probability of block having or not having cues
+    if cueBlock==0
+        count_uncued= count_uncued+1
+    else
+        count_cued= count_cued+1
+    end
+    trial = 1; % run trials
     while trial<=data.exp.numTrialsPerBlock
+        data.response.isCuedBlock(:,data.exp.numTrialsPerBlock*(block-1) + trial) = cueBlock; % save whether block is cued
         [data, timedOut, quit] = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial, window); % save data
         
         if quit
