@@ -7,12 +7,14 @@ var= load('data/uncertaintyV1-subject18-1-EarlyQuit.mat');
 data = var.data;
 contrast= data.response.contrast;
 variability= data.response.variance;
+
 lowc_count=1;
 highv_count=1;
 baseline_count=1;
 lowc_condition=[];
 highv_condition=[];
 baseline_condition=[];
+
 %segregating trials into the 3 conditions
 for i = 1:863
     if contrast(i)==.15 && variability(i)==0 % low contrast
@@ -32,8 +34,9 @@ sum_highv=0;
 sum_baseline=0;
 accuracy= data.response.accuracy;
 
+% adding up the number of trials with the correct response in each
+% condition
 for i = lowc_condition
-    %i
     sum_lowc = sum_lowc + accuracy(i);
 end
 for i = highv_condition
@@ -43,6 +46,8 @@ for i = lowc_condition
     sum_baseline= sum_baseline + accuracy(i);
 end
 
+% dividing sum of correct trials by total number of trials in each
+% condition
 ratio_lowc = sum_lowc./size(lowc_condition,2);
 ratio_highv = sum_highv./size(highv_condition,2);
 ratio_baseline = sum_baseline./size(baseline_condition,2);

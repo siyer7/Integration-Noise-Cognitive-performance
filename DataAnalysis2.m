@@ -9,8 +9,6 @@ data = var.data;
 contrast= data.response.contrast;
 variability= data.response.variance;
 
-%within each angle separated group (6), diverge into the 3 vector groups as above, then add proportion of CW choices, and divide by total number in the cue vector
-
 bucket1=[]; buck1len=1;
 bucket2=[]; buck2len=1;
 bucket3=[]; buck3len=1;
@@ -18,6 +16,7 @@ bucket4=[]; buck4len=1;
 bucket5=[]; buck5len=1;
 bucket6=[]; buck6len=1;
 
+% segregating trials by angle
 for i = 1:863
     angle= data.response.orientationMean(i);
     if angle <= -14
@@ -45,6 +44,8 @@ L_buck1_sum = 0; L_buck2_sum = 0; L_buck3_sum = 0; L_buck4_sum = 0; L_buck5_sum 
 N_buck1_sum = 0; N_buck2_sum = 0; N_buck3_sum = 0; N_buck4_sum = 0; N_buck5_sum = 0; N_buck6_sum = 0;
 R_buck1_sum = 0; R_buck2_sum = 0; R_buck3_sum = 0; R_buck4_sum = 0; R_buck5_sum = 0; R_buck6_sum = 0;
 
+% summing up number of times subject chooses CW, for each cued condition:
+% L/N/R, within each bucket
 for i = bucket1
     cueLet= data.response.cue(i);
     if data.response.responseRight(i)==1
