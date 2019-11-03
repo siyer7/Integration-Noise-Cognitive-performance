@@ -16,7 +16,7 @@ randSeed = rng('shuffle');
 c = binornd(1, 0.5) + 1;
 contrast = data.stimuli.contrastVal(c);
 
-v = binornd(2, 0.5) + 1;
+v = binornd(1, 0.5) + 1;
 variability = data.stimuli.variabilityVal(v);
 
 if binornd(1, 0.5)

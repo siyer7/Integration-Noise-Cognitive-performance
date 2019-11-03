@@ -10,7 +10,7 @@ data.exp.numBlocks = 36;
 data.exp.numTrialsPerBlock = 36;
 data.exp.numTrials = data.exp.numBlocks * data.exp.numTrialsPerBlock;
 
-data.exp.pTrials = 1; % number of practice trials
+data.exp.pTrials = 2; % number of practice trials
 
 data.exp.stimShowTime = 0.15; % 150ms
 data.exp.responseTimout = 3; % 3sec, response timeout
@@ -27,8 +27,8 @@ data.exp.directionTextSize = 40;
 % Keyboard Bindings
 KbName('UnifyKeyNames');
 data.exp.escapeKey = KbName('ESCAPE');
-data.exp.leftKey = KbName('1');
-data.exp.rightKey = KbName('3');
+data.exp.leftKey = KbName('4');
+data.exp.rightKey = KbName('6');
 data.exp.high = KbName('8');
 data.exp.medium= KbName('5');
 data.exp.low = KbName('2');
@@ -38,7 +38,7 @@ data.stimuli.genMean = [-3 3];
 data.stimuli.genStd = 8;
   
 data.stimuli.contrastVal = [.15 .6];
-data.stimuli.variabilityVal = [0 4 10];
+data.stimuli.variabilityVal = [0 10];
   
 data.stimuli.nSamples = 8; % number of gabors
 data.stimuli.gaborDimPix = 50;    
