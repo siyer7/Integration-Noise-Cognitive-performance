@@ -8,22 +8,19 @@ data = var.data;
 contrast= data.response.contrast;
 variability= data.response.variance;
 
-lowc_count=1;
-highv_count=1;
-baseline_count=1;
-lowc_condition=[];
-highv_condition=[];
-baseline_condition=[];
+lowc_count=1; lowc_condition=[];
+highv_count=1; highv_condition=[];
+baseline_count=1; baseline_condition=[];
 
 %segregating trials into the 3 conditions
-for i = 1:863
+for i = 1:863 % this number is how many trials the subject has run.
     if contrast(i)==.15 && variability(i)==0 % low contrast
         lowc_condition(lowc_count)=i;
         lowc_count = lowc_count+1;
     elseif variability(i)==10 && contrast(i)==.6 % high variability
         highv_condition(highv_count) = i;
         highv_count = highv_count+1;
-    elseif contrast(i)==.6 && variability(i)==0 %what other conditions besides these 3 do we include?
+    elseif contrast(i)==.6 && variability(i)==0 % baseline
         baseline_condition(baseline_count) = i;
         baseline_count = baseline_count+1;
     end
@@ -42,7 +39,7 @@ end
 for i = highv_condition
     sum_highv= sum_highv+ accuracy(i);
 end
-for i = lowc_condition
+for i = baseline_condition
     sum_baseline= sum_baseline + accuracy(i);
 end
 
