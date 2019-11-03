@@ -1,6 +1,6 @@
-close all;
+%close all;
 clear vars;
-clc;
+%clc;
 sca;
 
 %% Load Data
@@ -27,6 +27,9 @@ orientMean = data.response.orientationMean(1:trial);
 contrast = data.response.contrast(1:trial);
 variance = data.response.variance(1:trial);
 
+correctMean = round((sign(orientMean)+1)/2);
+responseR = abs(responseR - 1); % if ...Subject24-1-EarlyQuit.mat
+
 contrastList = data.stimuli.contrastVal;
 varianceList = data.stimuli.variabilityVal;
 
@@ -47,15 +50,21 @@ indxLCHV = intersect(indxContLo, indxVarHi);
 %% Accuracy
 figure
 
+mean(correct==correctMean)
+
 accBase = mean(correct(indxBase));
 accHCLV = mean(correct(indxHCLV));
 accLCHV = mean(correct(indxLCHV));
 
-accByCond = [accBase accHCLV accLCHV];
-accByCondLabel = reordercats(categorical({'Baseline', 'HCLV', 'LCHV'}));
+accBaseM = mean(correctMean(indxBase)==responseR(indxBase));
+accHCLVM = mean(correctMean(indxHCLV)==responseR(indxHCLV));
+accLCHVM = mean(correctMean(indxLCHV)==responseR(indxLCHV));
+
+accByCond = [accBase accHCLV accLCHV; accBaseM accHCLVM accLCHVM];
+accByCondLabel = [reordercats(categorical({'BL', 'HCLV', 'LCHV'})); reordercats(categorical({'BL2', 'HCLV2', 'LCHV2'}))];
 
 bar(accByCondLabel, accByCond);
-title("Accuracy by conditition");
+title("Accuracy by conditition (1:genDist; 2:orientMean)");
 ylabel("Proportion of trials correct");
 xlabel("Condition");
 
@@ -92,18 +101,4 @@ for c=1:3 % loop over cues
     
 end
 
-legend('L', 'N', 'R')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+%legend('L', 'N', 'R')
