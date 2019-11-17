@@ -1,104 +1,245 @@
 %close all;
 clear vars;
-%clc;
+clc;
 sca;
 
 %% Load Data
 
-var = load('data/uncertaintyV1-subject18-1-EarlyQuit.mat');
-data = var.data;
+data = LoadData(); % load data
 
-trial=1;
-while trial<=size(data.response.correct,2)
-    if isnan(data.response.correct(trial))
-         break
-    end
-    trial = trial + 1;
-end
+data.cue = categorical(data.cue, [-1 0 1], {'L', 'N', 'R'}); % relabel cues
 
-correct = data.response.correct(1:trial);
-responseR = data.response.responseRight(1:trial);
-accuracy = data.response.accuracy(1:trial);
-reactionTime = data.response.reactionTime(1:trial);
-confidence = data.response.confidence(1:trial);
-isCued = data.response.isCuedBlock(1:trial);
-cue = data.response.cue(1:trial);
-orientMean = data.response.orientationMean(1:trial);
-contrast = data.response.contrast(1:trial);
-variance = data.response.variance(1:trial);
+% determine conditions
+contLo = data.contrast==min(data.contrast);
+contHi = data.contrast==max(data.contrast);
+varLo = data.variance==min(data.variance);
+varHi = data.variance==max(data.variance);
 
-correctMean = round((sign(orientMean)+1)/2);
-responseR = abs(responseR - 1); % if ...Subject24-1-EarlyQuit.mat
+% 1:baseline 2:low-c 3:hi-v
+condition = categorical((contHi & varLo) + 2*(contLo & varLo) + 3*(contHi & varHi), ...
+    [0 1 2 3], {'other', 'baseline', 'low-c', 'hi-v'});
 
-contrastList = data.stimuli.contrastVal;
-varianceList = data.stimuli.variabilityVal;
-
-indxCueL = find(cue==-1);
-indxCueR = find(cue==0);
-indxCueN = find(cue==1);
-
-indxContLo = find(contrast==contrastList(1));
-indxContHi = find(contrast==contrastList(end));
-
-indxVarLo = find(variance==varianceList(1));
-indxVarHi = find(variance==varianceList(end));
-
-indxBase = intersect(indxContLo, indxVarLo);
-indxHCLV = intersect(indxContHi, indxVarLo);
-indxLCHV = intersect(indxContLo, indxVarHi);
+data.condition = condition; % store conditions
 
 %% Accuracy
 figure
 
-mean(correct==correctMean)
+f2a = gramm('x', data.condition, 'y', data.accuracy);
+f2a.facet_wrap(data.subject);
+f2a.stat_summary('type', 'bootci', 'geom', 'bar');
+f2a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
 
-accBase = mean(correct(indxBase));
-accHCLV = mean(correct(indxHCLV));
-accLCHV = mean(correct(indxLCHV));
+f2a.set_title("Accuracy by Condition");
+f2a.set_names('x', 'condition', 'y', 'proportion of trials correct', 'column', 'Subject');
+f2a.axe_property('ylim', [0 1]);
 
-accBaseM = mean(correctMean(indxBase)==responseR(indxBase));
-accHCLVM = mean(correctMean(indxHCLV)==responseR(indxHCLV));
-accLCHVM = mean(correctMean(indxLCHV)==responseR(indxLCHV));
-
-accByCond = [accBase accHCLV accLCHV; accBaseM accHCLVM accLCHVM];
-accByCondLabel = [reordercats(categorical({'BL', 'HCLV', 'LCHV'})); reordercats(categorical({'BL2', 'HCLV2', 'LCHV2'}))];
-
-bar(accByCondLabel, accByCond);
-title("Accuracy by conditition (1:genDist; 2:orientMean)");
-ylabel("Proportion of trials correct");
-xlabel("Condition");
+f2a.draw();
 
 %% Psychometric Curves
+
+% generate psychometric curves
+[psyGroup, subjID, cueID] = findgroups(data.subject, data.cue);
+[binMeans, psychResp, psychErr] = splitapply(@psychometric, data.orientMean, data.responseR, psyGroup);
+
+% get confidence intervals
+errMin = psychResp - psychErr./2;
+errMax = psychResp + psychErr./2;
+
+pct = table(subjID, cueID, binMeans, psychResp, errMin, errMax); % psychometric curve table
+
+% plot
 figure
-hold on
 
-orientMeanArr = [-100 -10 -7 -5 -2 0 2 5 7 10 100];
-orientMeanBuckets = zeros(3,size(orientMeanArr, 2)-1);
+f2b = gramm('x', pct.binMeans, 'y', pct.psychResp, 'color', pct.cueID, 'ymin', errMin, 'ymax', errMax);
+f2b.facet_wrap(pct.subjID, 'ncols', 2);
+f2b.geom_point();
+f2b.geom_line('alpha', 0.5);
+f2b.geom_interval('geom', 'black_errorbar');
 
-respMeanBuckets = zeros(3,size(orientMeanArr, 2)-1);
-respStdBuckets = zeros(3,size(orientMeanArr, 2)-1);
+f2b.geom_vline('xintercept', 0, 'style', ':');
+f2b.geom_hline('yintercept', 0.5, 'style', ':');
 
-indxCue = [indxCueL indxCueN indxCueR];
+f2b.set_title("Psychometric Curves per Cue by Subject");
+f2b.set_names('x', 'mean orientation', 'y', 'proportion of response CW',...
+    'column', 'Subject', 'color', 'Cues');
+f2b.draw();
 
-for c=1:3 % loop over cues
-    for i=1:size(orientMeanArr, 2)-1
-        indxBucket = find(orientMean>=orientMeanArr(i) & orientMean<orientMeanArr(i+1));
-        indxBucketCue = intersect(indxBucket, indxCue(c));
-        
-        if ~indxBucketCue
-            orientMeanBuckets(c,i) = mean(bucket);
-            respMeanBuckets(c,i) = 0;
+%% Reported Confidence
+figure
+
+f3a = gramm('x', data.condition, 'y', data.confidence);
+f3a.facet_wrap(data.subject);
+f3a.stat_summary('type', 'bootci', 'geom', 'bar');
+f3a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
+
+f3a.set_title("Reported Confidence by Condition");
+f3a.set_names('x', 'condition', 'y', 'proportion of trials correct', 'column', 'Subject');
+
+f3a.draw();
+
+%% Overconfidence
+
+% calculate overconfidence
+oc = @(x, y) mean(x) - mean(y);
+
+[ocGroup, subjID, condID] = findgroups(data.subject, data.condition);
+overConf = splitapply(oc, data.accuracy, data.confidence, ocGroup);
+
+oct = table(overConf, subjID, condID); % create table
+
+% plot
+figure
+
+f3c = gramm('x', oct.condID, 'y', oct.overConf);
+f3c.facet_wrap(oct.subjID);
+
+f3c.stat_summary('type', 'bootci', 'geom', 'bar');
+
+f3c.set_title("Over-Confidence by Condition");
+f3c.set_names('x', 'condition', 'y', 'overconfidence', 'column', 'Subject');
+
+f3c.draw();
+
+%% Confidence and Reaction Time
+figure
+
+g1a = gramm('y', data.reactTime, 'x', data.confidence);
+g1a.facet_grid(data.accuracy, data.subject);
+
+g1a.stat_summary('type', 'bootci', 'geom', 'bar');
+g1a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
+g1a.stat_fit('fun', @(m,b,x)m*x+b, 'StartPoint', [0 0], 'geom', 'line');
+
+g1a.axe_property('xlim', [-1.5 1.5], 'ylim', [0 1.5]);
+g1a.set_title("Reaction Time by Confidence Level");
+g1a.set_names('x', 'confidence judgement', 'y', 'reaction time', 'row', 'Accuracy', 'column', 'Subject');
+
+g1a.draw();
+%% Aux Functions
+
+% for stripping data to completed trials
+function [n] = LastTrial(data)
+    n=1;
+
+    while n<=size(data.response.correct,2)
+        if isnan(data.response.correct(n))
+            n = n - 1;
+            break
         end
-
-        bucket = orientMean(indxBucket); % orientation mean values
-        resp = responseR(indxBucket); % response right values
-
-        orientMeanBuckets(c,i) = mean(bucket);
-        respMeanBuckets(c,i) = mean(resp);        
+        n = n + 1;
     end
-    
-    plot(orientMeanBuckets(c,:), respMeanBuckets(c,:), 'LineWidth', 2);
-    
+
+    n = n-1;
+
 end
 
-%legend('L', 'N', 'R')
+% load data as a table
+function [tbl] = LoadData()
+    files = dir(fullfile(pwd, 'data')); % get directory name
+    tbl = nan; % init table as nan
+    
+    % loop over files
+    for i = 1:length(files)
+        
+        % regex to get filename
+        match = cell2mat(regexp(files(i).name,'subject\d{2}-\d{1,2}', 'match'));
+        
+        % if data file
+        if ~isempty(match)
+            subjNum = str2num(match(8:9)); % get subject number
+            seshNum = str2num(match(11:end)); % get session number
+            
+            if subjNum==1 % subject01 for testing--not real data
+                continue
+            end
+            
+            % load file
+            var = load(fullfile(pwd, 'data', files(i).name));
+            data = var.data.response;
+            
+            n = LastTrial(var.data); % index for completed trials
+            
+            %if subjNum==2
+            %    data.responseRight = abs(1-data.responseRight);
+            %    data.accuracy = abs(1-data.accuracy);
+            %end
+            
+            % for table input
+            subject = repmat(subjNum,n,1);
+            session = repmat(seshNum,n,1);
+            
+            if ~istable(tbl) % first table entry
+                tbl = table(...
+                    data.correct(1:n)', ...
+                    data.responseRight(1:n)', ...
+                    data.accuracy(1:n)',...
+                    data.reactionTime(1:n)',...
+                    data.confidence(1:n)',...
+                    data.isCuedBlock(1:n)',...
+                    data.cue(1:n)',...
+                    data.orientationMean(1:n)',...
+                    data.contrast(1:n)',...
+                    data.variance(1:n)',...
+                    subject,...
+                    session,...
+                    'VariableNames',...
+                    {'correct','responseR','accuracy',...
+                    'reactTime','confidence','isCued',...
+                    'cue','orientMean','contrast',...
+                    'variance','subject','session'});
+            else
+                tbl_ = table(... % append to table
+                    data.correct(1:n)', ...
+                    data.responseRight(1:n)', ...
+                    data.accuracy(1:n)',...
+                    data.reactionTime(1:n)',...
+                    data.confidence(1:n)',...
+                    data.isCuedBlock(1:n)',...
+                    data.cue(1:n)',...
+                    data.orientationMean(1:n)',...
+                    data.contrast(1:n)',...
+                    data.variance(1:n)',...
+                    subject,...
+                    session,...
+                    'VariableNames',...
+                    {'correct','responseR','accuracy',...
+                    'reactTime','confidence','isCued',...
+                    'cue','orientMean','contrast',...
+                    'variance','subject','session'});
+                
+                tbl = [tbl;tbl_]; % append to big table
+            end          
+        end % end if match
+    end % end loop over files
+end
+
+% calculate psychometric curve
+function [binMeans, psychResp, psychErr] = psychometric(orientMean, responses)  
+    quants = quantile(orientMean, 5, 1); % determine quantiles for binning
+    quants = [-100; quants; 100]; % captural entire range
+    
+    bins = discretize(orientMean, quants); % index by bin
+    
+    % init return variables
+    psychResp = zeros(1,6);
+    psychErr = zeros(1,6);
+    binMeans = zeros(1,6);
+    
+    % loop over bin index
+    for i=1:6
+        tempResp = []; % temporary varariables
+        tempBins = []; % for data collection
+        
+        for j=1:length(bins) % loop over bin indeces
+            if bins(j)==i
+                tempResp = [tempResp responses(j)];
+                tempBins = [tempBins orientMean(j)];
+            end
+        end
+        
+        % store data
+        psychResp(i) = mean(tempResp); % p(response=1)
+        psychErr(i) = sqrt(mean(tempResp)*(1-mean(tempResp))/length(tempResp)); % std dev
+        binMeans(i) = mean(tempBins); % bin mean
+    end 
+end
