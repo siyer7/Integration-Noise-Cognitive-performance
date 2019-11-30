@@ -22,18 +22,59 @@ condition = categorical((contHi & varLo) + 2*(contLo & varLo) + 3*(contHi & varH
 data.condition = condition; % store conditions
 
 %% Accuracy
-figure
 
-f2a = gramm('x', data.condition, 'y', data.accuracy);
-f2a.facet_wrap(data.subject);
-f2a.stat_summary('type', 'bootci', 'geom', 'bar');
-f2a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
+% Within Subject
+[accGroup, subjID, condID] = findgroups(data.subject, data.condition);
+[accBySubjCond, accSC_CI] = splitapply(@MeanCI, data.accuracy, accGroup);
 
-f2a.set_title("Accuracy by Condition");
-f2a.set_names('x', 'condition', 'y', 'proportion of trials correct', 'column', 'Subject');
-f2a.axe_property('ylim', [0 1]);
+accTable = table(subjID, condID, accBySubjCond, accSC_CI);
 
-f2a.draw();
+numSubj = size(unique(subjID), 1);
+
+% Plot Within Subject
+figure(1);
+sgtitle("Accuracy per Condition by Subject")
+
+for i=1:numSubj
+    subplot(round(numSubj/2), 2, i)
+    
+    x = accTable{(4*i-3):(4*i), 'condID'};
+    y = accTable{(4*i-3):(4*i), 'accBySubjCond'};
+    ci = accTable{(4*i-3):(4*i), 'accSC_CI'};
+    subj = accTable.subjID(4*i);
+    
+    bar(x,y);
+    hold on
+
+    errorbar(x, y, ci(:,1), ci(:,2), 'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+    title(sprintf("Subject %d", subj));
+    ylim([0 1]);
+end
+
+% Across Subjects
+[accGroupAll, condID] = findgroups(accTable.condID);
+[accAllSubj, accAllSubj_CI] = splitapply(@MeanCI, accTable.accBySubjCond, accGroupAll);
+
+% Plot Across Subject
+figure(2);
+hold on
+
+title("Accuracy per Condition");
+
+bar(x, accAllSubj)
+errorbar(x, accAllSubj, accAllSubj_CI(:,1), accAllSubj_CI(:,2), 'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+
+
+%f2a = gramm('x', data.condition, 'y', data.accuracy);
+%f2a.facet_wrap(data.subject);
+%f2a.stat_summary('type', 'bootci', 'geom', 'bar');
+%f2a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
+
+%f2a.set_title("Accuracy by Condition");
+%f2a.set_names('x', 'condition', 'y', 'proportion of trials correct', 'column', 'Subject');
+%f2a.axe_property('ylim', [0 1]);
+
+%f2a.draw();
 
 %% Psychometric Curves
 
@@ -42,8 +83,8 @@ f2a.draw();
 [binMeans, psychResp, psychErr] = splitapply(@psychometric, data.orientMean, data.responseR, psyGroup);
 
 % get confidence intervals
-errMin = psychResp - psychErr./2;
-errMax = psychResp + psychErr./2;
+errMin = psychResp - psychErr;%./2;
+errMax = psychResp + psychErr;%./2;
 
 pct = table(subjID, cueID, binMeans, psychResp, errMin, errMax); % psychometric curve table
 
@@ -53,7 +94,9 @@ figure
 f2b = gramm('x', pct.binMeans, 'y', pct.psychResp, 'color', pct.cueID, 'ymin', errMin, 'ymax', errMax);
 f2b.facet_wrap(pct.subjID, 'ncols', 2);
 f2b.geom_point();
-f2b.geom_line('alpha', 0.5);
+
+f2b.geom_line();
+%f2b.stat_smooth();
 f2b.geom_interval('geom', 'black_errorbar');
 
 f2b.geom_vline('xintercept', 0, 'style', ':');
@@ -73,7 +116,9 @@ f3a.stat_summary('type', 'bootci', 'geom', 'bar');
 f3a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
 
 f3a.set_title("Reported Confidence by Condition");
-f3a.set_names('x', 'condition', 'y', 'proportion of trials correct', 'column', 'Subject');
+f3a.set_names('x', 'condition', 'y', 'reported confidence', 'column', 'Subject');
+
+f3a.axe_property('ylim', [-.7 .9])
 
 f3a.draw();
 
@@ -115,6 +160,20 @@ g1a.set_title("Reaction Time by Confidence Level");
 g1a.set_names('x', 'confidence judgement', 'y', 'reaction time', 'row', 'Accuracy', 'column', 'Subject');
 
 g1a.draw();
+
+%% Data Analysis Functions
+
+function [xMean, xCI] = MeanCI(x)
+    N = size(x,1); % determine size of data
+    
+    xMean = mean(x); % calculate mean
+    xSEM = std(x)/sqrt(N); % calculate standard error
+    
+    CI = tinv([0.025 0.975], N-1); % calculate confidence probability intervals
+    xCI = bsxfun(@times, xSEM, CI(:))'; % calculate confidence intervals
+    
+end
+
 %% Aux Functions
 
 % for stripping data to completed trials
@@ -130,7 +189,6 @@ function [n] = LastTrial(data)
     end
 
     n = n-1;
-
 end
 
 % load data as a table
