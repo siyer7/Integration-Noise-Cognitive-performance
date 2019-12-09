@@ -9,7 +9,7 @@ data = LoadData(); % load data
 
 data.cue = categorical(data.cue, [-1 0 1], {'L', 'N', 'R'}); % relabel cues
 
-% determine conditions
+% determine conditionsx, 
 contLo = data.contrast==min(data.contrast);
 contHi = data.contrast==max(data.contrast);
 varLo = data.variance==min(data.variance);
@@ -35,20 +35,25 @@ numSubj = size(unique(subjID), 1);
 figure(1);
 sgtitle("Accuracy per Condition by Subject")
 
+nRows = 3;
+
 for i=1:numSubj
-    subplot(round(numSubj/2), 2, i)
+    subplot(ceil(numSubj/nRows), nRows, i)
     
     x = accTable{(4*i-3):(4*i), 'condID'};
     y = accTable{(4*i-3):(4*i), 'accBySubjCond'};
     ci = accTable{(4*i-3):(4*i), 'accSC_CI'};
     subj = accTable.subjID(4*i);
     
-    bar(x,y);
     hold on
-
+    bar(x,y);
     errorbar(x, y, ci(:,1), ci(:,2), 'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+    
     title(sprintf("Subject %d", subj));
-    ylim([0 1]);
+    ylim([0.4 1]);
+    xlim({'baseline', 'hi-v'});
+    ylabel("proportion correct");
+    xlabel("condition");
 end
 
 % Across Subjects
@@ -61,108 +66,171 @@ hold on
 
 title("Accuracy per Condition");
 
-bar(x, accAllSubj)
-errorbar(x, accAllSubj, accAllSubj_CI(:,1), accAllSubj_CI(:,2), 'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+bar(x, accAllSubj);
+errorbar(x, accAllSubj, accAllSubj_CI(:,1), accAllSubj_CI(:,2), ...
+    'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+scatter(accTable.condID, accTable.accBySubjCond, 50, 'red', 'filled', 'jitter','on', 'jitterAmount',0.25);
 
-
-%f2a = gramm('x', data.condition, 'y', data.accuracy);
-%f2a.facet_wrap(data.subject);
-%f2a.stat_summary('type', 'bootci', 'geom', 'bar');
-%f2a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
-
-%f2a.set_title("Accuracy by Condition");
-%f2a.set_names('x', 'condition', 'y', 'proportion of trials correct', 'column', 'Subject');
-%f2a.axe_property('ylim', [0 1]);
-
-%f2a.draw();
+ylim([0.5 1]);
+xlim({'baseline', 'hi-v'});
+ylabel("proportion correct");
+xlabel("condition");
 
 %% Psychometric Curves
-
-% generate psychometric curves
-[psyGroup, subjID, cueID] = findgroups(data.subject, data.cue);
+% per subject
+% generate psychometric points
+[psyGroup, subjID, condID, cueID] = findgroups(data.subject, data.condition, data.cue);
 [binMeans, psychResp, psychErr] = splitapply(@psychometric, data.orientMean, data.responseR, psyGroup);
 
 % get confidence intervals
-errMin = psychResp - psychErr;%./2;
-errMax = psychResp + psychErr;%./2;
+errMin = -psychErr;
+errMax = psychErr;
 
-pct = table(subjID, cueID, binMeans, psychResp, errMin, errMax); % psychometric curve table
+% fit psychometric curve
+[alpha, beta, sz] = splitapply(@psychometricFit, data.orientMean, data.responseR, psyGroup);
 
-% plot
-figure
+% create tabe
+pct = table(subjID, cueID, condID, binMeans, psychResp, errMin, errMax, alpha, beta); % psychometric curve table
 
-f2b = gramm('x', pct.binMeans, 'y', pct.psychResp, 'color', pct.cueID, 'ymin', errMin, 'ymax', errMax);
-f2b.facet_wrap(pct.subjID, 'ncols', 2);
-f2b.geom_point();
-
-f2b.geom_line();
-%f2b.stat_smooth();
-f2b.geom_interval('geom', 'black_errorbar');
-
-f2b.geom_vline('xintercept', 0, 'style', ':');
-f2b.geom_hline('yintercept', 0.5, 'style', ':');
-
-f2b.set_title("Psychometric Curves per Cue by Subject");
-f2b.set_names('x', 'mean orientation', 'y', 'proportion of response CW',...
-    'column', 'Subject', 'color', 'Cues');
-f2b.draw();
-
-%% Reported Confidence
-figure
-
-f3a = gramm('x', data.condition, 'y', data.confidence);
-f3a.facet_wrap(data.subject);
-f3a.stat_summary('type', 'bootci', 'geom', 'bar');
-f3a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
-
-f3a.set_title("Reported Confidence by Condition");
-f3a.set_names('x', 'condition', 'y', 'reported confidence', 'column', 'Subject');
-
-f3a.axe_property('ylim', [-.7 .9])
-
-f3a.draw();
-
-%% Overconfidence
-
-% calculate overconfidence
-oc = @(x, y) mean(x) - mean(y);
-
-[ocGroup, subjID, condID] = findgroups(data.subject, data.condition);
-overConf = splitapply(oc, data.accuracy, data.confidence, ocGroup);
-
-oct = table(overConf, subjID, condID); % create table
+keys = {'L', 'N', 'R'};
+vals = {'red', 'black', 'blue'};
+clrs = containers.Map(keys, vals);
 
 % plot
-figure
+figure(3)
+sgtitle("Psychometric Curves");
 
-f3c = gramm('x', oct.condID, 'y', oct.overConf);
-f3c.facet_wrap(oct.subjID);
+for s=1:numSubj
+    for i=1:4 % conditions
+        
+        if i==1
+            continue
+        end
+        
+        subplot(3, 1, i-1);
+        hold on
 
-f3c.stat_summary('type', 'bootci', 'geom', 'bar');
+        p = [];
 
-f3c.set_title("Over-Confidence by Condition");
-f3c.set_names('x', 'condition', 'y', 'overconfidence', 'column', 'Subject');
+        cond = string(pct{12*s-12+3*i, 'condID'});
 
-f3c.draw();
+        for c=0:2 % cues
+            cue = string(pct{12*s-12+3*i+c-2, 'cueID'});
 
-%% Confidence and Reaction Time
-figure
+            bin = pct{12*s-12+3*i+c-2, 'binMeans'};
+            resp = pct{12*s-12+3*i+c-2, 'psychResp'};
 
-g1a = gramm('y', data.reactTime, 'x', data.confidence);
-g1a.facet_grid(data.accuracy, data.subject);
+            a = pct{12*s-12+3*i+c-2, 'alpha'};
+            b = pct{12*s-12+3*i+c-2, 'beta'};
 
-g1a.stat_summary('type', 'bootci', 'geom', 'bar');
-g1a.stat_summary('type', 'bootci', 'geom', 'black_errorbar');
-g1a.stat_fit('fun', @(m,b,x)m*x+b, 'StartPoint', [0 0], 'geom', 'line');
+            x = linspace(-20, 20, 100);
+            y = glmval([a;b], x, 'logit');
 
-g1a.axe_property('xlim', [-1.5 1.5], 'ylim', [0 1.5]);
-g1a.set_title("Reaction Time by Confidence Level");
-g1a.set_names('x', 'confidence judgement', 'y', 'reaction time', 'row', 'Accuracy', 'column', 'Subject');
+            p = [p plot(x,y, ':', 'Color', clrs(cue), 'LineWidth', 2)];
+            %plot(bin, resp, 'o', 'MarkerSize', 5, 'Color', clrs(cue));
+        end
 
-g1a.draw();
+        legend(p, {'L', 'N', 'R'}, 'Location', 'best');
+        title(cond);
+    end
+end
+
+% example subject
+figure(4)
+hold on
+
+s = 5; % subject number
+subj = pct{12*s-1, 'subjID'};
+sgtitle(strcat("Psychometric Curves Example Subject - ", string(subj)));
+
+for i=1:4 % cond
+    if i==1
+        continue
+    end
+        
+    subplot(3,1,i-1);
+    hold on
+    
+    cond = string(pct{12*s-12+3*i, 'condID'});
+    
+    p = [];
+    
+    for c=0:2 % cue
+        cue = string(pct{12*s-12+3*i+c-2, 'cueID'});
+        
+        a = pct{12*s-12+3*i+c-2, 'alpha'};
+        b = pct{12*s-12+3*i+c-2, 'beta'};
+        
+        bin = pct{12*s-12+3*i+c-2, 'binMeans'};
+        resp = pct{12*s-12+3*i+c-2, 'psychResp'};
+
+        x = linspace(-40, 40, 100);
+        y = glmval([a;b], x, 'logit');
+        
+        p = [p plot(x, y, 'Color', clrs(cue), 'LineWidth', 2)];
+        scatter(bin, resp, clrs(cue), 'filled');
+    end
+    
+    legend(p, {'L', 'N', 'R'}, 'Location', 'best');
+    title(cond);
+end
+
+%% Bias Index
+
+% per subject
+[biasGroup, subjID, condID] = findgroups(pct.subjID, pct.condID);
+biasIndx = splitapply(@biasIndex, pct.alpha, pct.cueID, biasGroup);
+
+biasTable = table(subjID, condID, biasIndx);
+
+figure(5)
+sgtitle("Bias Index per Subject");
+nRows = 3;
+
+for s=1:numSubj
+    subplot(ceil(numSubj/nRows), nRows, s);
+    
+    subj = biasTable{s*4, 'subjID'};
+    
+    x = biasTable{s*4-2:s*4, 'condID'};
+    y = biasTable{s*4-2:s*4, 'biasIndx'};
+    
+    bar(x,y)
+    
+    grid on
+    
+    xlim({'baseline', 'hi-v'});
+    ylim([min(min(y)-0.5,0), max(y)+0.5]);
+    
+    ylabel("bias index");
+    xlabel("condition");
+    
+    title(strcat("Subject ", string(subj)));
+end
+
+% across subject
+[biasAllGroup, condID] = findgroups(biasTable.condID);
+[biasIndxAll, errBiasAll] = splitapply(@MeanCI, biasTable.biasIndx, biasAllGroup);
+
+biasAllTable = table(condID, biasIndxAll, errBiasAll);
+
+figure(6)
+hold on
+title("Bias Index by Condition");
+
+bar(biasAllTable.condID, biasAllTable.biasIndxAll);
+errorbar(biasAllTable.condID, biasAllTable.biasIndxAll, errBiasAll(:,1), errBiasAll(:,2),...
+    'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+scatter(biasTable.condID, biasTable.biasIndx, 50, 'red', 'filled', 'jitter','on', 'jitterAmount',0.25);
+
+xlim({'baseline', 'hi-v'});
+
+xlabel("condition");
+ylabel("bias index");
 
 %% Data Analysis Functions
 
+% get mean and 95% confidence intervals
 function [xMean, xCI] = MeanCI(x)
     N = size(x,1); % determine size of data
     
@@ -170,8 +238,21 @@ function [xMean, xCI] = MeanCI(x)
     xSEM = std(x)/sqrt(N); % calculate standard error
     
     CI = tinv([0.025 0.975], N-1); % calculate confidence probability intervals
-    xCI = bsxfun(@times, xSEM, CI(:))'; % calculate confidence intervals
+    xCI = bsxfun(@times, xSEM, CI(:))'; % calculate confidence intervals 
+end
+
+% fit psychometric curve
+function [t1, t2, sz] = psychometricFit(x, y)
+    theta = glmfit(x, y, 'binomial', 'link', 'logit');
+    t1 = theta(1);
+    t2 = theta(2);
     
+    sz = size(x, 1);
+end
+
+% calculate bias index
+function [bi] = biasIndex(a, cue)
+    bi = a(cue==categorical({'R'})) - a(cue==categorical({'L'}));
 end
 
 %% Aux Functions
@@ -207,7 +288,10 @@ function [tbl] = LoadData()
             subjNum = str2num(match(8:9)); % get subject number
             seshNum = str2num(match(11:end)); % get session number
             
-            if subjNum==1 % subject01 for testing--not real data
+            % which subjects to exclude
+            % subject01 for testing--not real data
+            % subj 2-4: informed, less data
+            if any(subjNum==[1]) 
                 continue
             end
             
