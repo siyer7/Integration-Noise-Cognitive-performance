@@ -69,7 +69,7 @@ title("Accuracy per Condition");
 bar(x, accAllSubj);
 errorbar(x, accAllSubj, accAllSubj_CI(:,1), accAllSubj_CI(:,2), ...
     'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
-scatter(accTable.condID, accTable.accBySubjCond, 50, 'red', 'filled', 'jitter','on', 'jitterAmount',0.25);
+scatter(accTable.condID, accTable.accBySubjCond, 50, [.3 .3 .3], 'filled', 'jitter','on', 'jitterAmount',0.25);
 
 ylim([0.5 1]);
 xlim({'baseline', 'hi-v'});
@@ -135,11 +135,11 @@ for s=1:numSubj
     end
 end
 
-% example subject
+%% example subject
 figure(4)
 hold on
 
-s = 5; % subject number
+s = 6; % subject number
 subj = pct{12*s-1, 'subjID'};
 sgtitle(strcat("Psychometric Curves Example Subject - ", string(subj)));
 
@@ -148,7 +148,7 @@ for i=1:4 % cond
         continue
     end
         
-    subplot(3,1,i-1);
+    subplot(1,3,i-1);
     hold on
     
     cond = string(pct{12*s-12+3*i, 'condID'});
@@ -164,9 +164,10 @@ for i=1:4 % cond
         bin = pct{12*s-12+3*i+c-2, 'binMeans'};
         resp = pct{12*s-12+3*i+c-2, 'psychResp'};
 
-        x = linspace(-40, 40, 100);
+        x = linspace(-20, 20, 41);
         y = glmval([a;b], x, 'logit');
-        
+
+        plot([round(a), round(a)],[0, y(x==round(a))], 'Color', clrs(cue), 'LineWidth', 2);
         p = [p plot(x, y, 'Color', clrs(cue), 'LineWidth', 2)];
         scatter(bin, resp, clrs(cue), 'filled');
     end
