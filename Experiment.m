@@ -1,3 +1,4 @@
+
 function [data] = Experiment(varargin)
 % Main Code
 
@@ -27,6 +28,7 @@ while exist(fileName, 'file') || exist(fileNameEarly, 'file')
     fileNameEarly = fullfile(directory, [data.participant.subjectId sprintf('-%i', i) '-EarlyQuit' '.mat']);
 end
 
+data.participant.subjectId
 
 %% Prepare Psychtoolbox Stuff
 PsychDefaultSetup(2);
@@ -36,6 +38,7 @@ screenNum = max(Screen('Screens'));
 black = [ 0  0  0];
 grey =  [.5 .5 .5];
 white = [ 1  1  1];
+
 
 [window, windowRect] = PsychImaging('OpenWindow', screenNum, grey, [1920 0 1920*2 1080], 32, 2,...
         [], [],  kPsychNeed32BPCFloat);
@@ -70,8 +73,8 @@ data.stimuli.gratingBoxes = repmat([xCenter yCenter], data.stimuli.nSamples, 2) 
 
 % Display instructions
 DrawFormattedText(window, ['Welcome to the experiment! You will see an array of gratings.\n'...
-    'Press the 4 KEY if more gratings are orientated Clockwise.\n'...
-    'Press the 6 KEY if more gratings are oriented Counter-Clockwise.\n'...,
+    'Press the 6 KEY if more gratings are orientated Clockwise.\n'...
+    'Press the 4 KEY if more gratings are oriented Counter-Clockwise.\n'...,
     'Press any key to continue...'],...
     'center','center', white);
 
@@ -92,8 +95,10 @@ Screen('TextSize', window, data.exp.cueTextSize);
 
 % Run practice trials
 for i=1:data.exp.pTrials
+    
     [data, timedOut, quit] = RunTrial(data, 0, window); % no save data 
     if quit
+        data.response.endTrialNum = i -1;
         Screen('CloseAll');
         sca;
         return
@@ -112,14 +117,15 @@ KbStrokeWait;
 % Run blocks
 block = 1;
 while block<=data.exp.numBlocks
-    % alternating between cued and uncued block
-    cueBlock = mod(block,2);
+    cueBlock = mod(block,2); % alternate cue/no cue blocks
+    
     trial = 1; % run trials
     while trial<=data.exp.numTrialsPerBlock
         data.response.isCuedBlock(:,data.exp.numTrialsPerBlock*(block-1) + trial) = cueBlock; % save whether block is cued
-        [data, timedOut, quit] = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial, window); % save data
+        [data, timedOut, quit] = RunTrial(data, data.exp.numTrialsPerBlock*(block-1) + trial, window);
         
         if quit
+            data.response.numTrialsRan = data.exp.numTrialsPerBlock*(block-1) + trial - 1;
             SaveExit(quit);
             return;
         end
@@ -142,34 +148,33 @@ while block<=data.exp.numBlocks
     
 end % end blocks
 
-"trials ran" % DEBUG
-
 %% Save Data
+data.response.numTrialsRan = data.exp.numTrialsPerBlock*(block-1) + trial
 SaveExit()
 
-    % Save and Exit
-    function [] = SaveExit(early)
-        if nargin==0
-            early=0;
-        end
-        
-        Screen('CloseAll');
-        sca;
-        Priority(0);
-        
-        try % some trials have been performed
-            numTrials = data.exp.numTrialsPerBlock*(block-1) + trial;
-        catch % no trials --> don't save anything
-            return
-        end
-        
-        if early
-            save(fileNameEarly, 'data');
-        else
-            save(fileName, 'data');
-        end
-        "Succesfully Saved!"
-    end % end SaveExit
+% Save and Exit
+function [] = SaveExit(early)
+    if nargin==0
+        early=0;
+    end
+
+    Screen('CloseAll');
+    sca;
+    Priority(0);
+
+    try % some trials have been performed
+        numTrials = data.exp.numTrialsPerBlock*(block-1) + trial;
+    catch % no trials --> don't save anything
+        return
+    end
+
+    if early
+        save(fileNameEarly, 'data');
+    else
+        save(fileName, 'data');
+    end
+    "Succesfully Saved!"
+end % end SaveExit
 
 end % end Experiment
 

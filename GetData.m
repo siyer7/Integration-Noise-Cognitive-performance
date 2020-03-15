@@ -3,16 +3,16 @@ function [data] = GetData(directory, varargin)
 % Set all the experimental parameters here
 
 data = struct;
-data.participant.subjectId = getSubjectId(directory, 'uncertaintyV1');
+data.participant.subjectId = getSubjectId(directory, 'uncertaintyV1')
 
 % Experimental Paramters
-data.exp.numBlocks = 36;
+data.exp.numBlocks = 25;
 data.exp.numTrialsPerBlock = 36;
 data.exp.numTrials = data.exp.numBlocks * data.exp.numTrialsPerBlock;
 
-data.exp.pTrials = 2; % number of practice trials
+data.exp.pTrials = 72; % number of practice trials
 
-data.exp.stimShowTime = 0.15; % 150ms
+data.exp.stimShowTime = .150; % 150ms
 data.exp.responseTimout = 3; % 3sec, response timeout
 
 data.exp.fixShowTime = 0.3; % 300ms show fixation point
@@ -50,7 +50,7 @@ data.stimuli.envelopDev = 90;
 data.stimuli.noiseAmp = .1;
 data.stimuli.phase = pi*rand(data.stimuli.nSamples, data.exp.numTrials);
 
-% Calculate Stimuli position
+% Calculate Stimuli position for all 8 gabor patches
 allAngles = linspace(0, 360, data.stimuli.nSamples+1); 
 allAngles = pi ./ 180 .* allAngles(1:end-1);
 
@@ -63,13 +63,13 @@ data.stimuli.posY = round(posY);
 % Response Arrays
 data.response.randSeed = NaN(1, data.exp.numTrials);
 
-data.response.responseRight = NaN(1, data.exp.numTrials);
+data.response.responseRight = NaN(1, data.exp.numTrials); % subject response
 data.response.correct = NaN(1, data.exp.numTrials);
 data.response.accuracy = NaN(1, data.exp.numTrials);
 data.response.reactionTime = NaN(1, data.exp.numTrials);
 data.response.confidence = NaN(1, data.exp.numTrials);
 
-data.response.isCuedBlock = NaN(1, data.exp.numTrials);
+data.response.isCuedBlock = NaN(1, data.exp.numTrials); % boolean
 data.response.cue = NaN(1, data.exp.numTrials);
 data.response.orientationMean = NaN(1, data.exp.numTrials);
 data.response.contrast = NaN(1, data.exp.numTrials);
