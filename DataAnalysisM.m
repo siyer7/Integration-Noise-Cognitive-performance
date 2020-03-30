@@ -21,60 +21,84 @@ condition = categorical((contHi & varLo) + 2*(contLo & varLo) + 3*(contHi & varH
 
 data.condition = condition; % store conditions
 
-%% Accuracy
+% useful vars
+numSubj = size(unique(subjID), 1);
+subjCol = [ones(numSubj,1)-0.8, linspace(.1,1, numSubj)',...
+    linspace(.7, .9, numSubj)'];
+infsub = [2 3 4]; % informed subjects
 
+
+%% Accuracy
+clc
 % Within Subject
 [accGroup, subjID, condID] = findgroups(data.subject, data.condition);
 [accBySubjCond, accSC_CI] = splitapply(@MeanCI, data.accuracy, accGroup);
 
 accTable = table(subjID, condID, accBySubjCond, accSC_CI);
 
-numSubj = size(unique(subjID), 1);
-
 % Plot Within Subject
 figure(1);
-sgtitle("Accuracy per Condition by Subject")
+hold on;
 
-nRows = 3;
+lgnd = []; % legend labels
+plts = []; % corresponding plots (avoid doubles due to errorbars)
 
 for i=1:numSubj
-    subplot(ceil(numSubj/nRows), nRows, i)
-    
-    x = accTable{(4*i-3):(4*i), 'condID'};
-    y = accTable{(4*i-3):(4*i), 'accBySubjCond'};
-    ci = accTable{(4*i-3):(4*i), 'accSC_CI'};
+    x = accTable{(4*i-2):(4*i), 'condID'};
+    y = accTable{(4*i-2):(4*i), 'accBySubjCond'};
+    ci = accTable{(4*i-2):(4*i), 'accSC_CI'};
     subj = accTable.subjID(4*i);
     
-    hold on
-    bar(x,y);
-    errorbar(x, y, ci(:,1), ci(:,2), 'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+    if any(infsub==subj)
+        p = plot(x, y, 's-', 'Color', subjCol(i,:),...
+        'MarkerSize', 10, 'MarkerFaceColor', subjCol(i,:));
+    else
+        p = plot(x, y, '.-', 'Color', subjCol(i,:),...
+        'MarkerSize', 30);
+    end
     
-    title(sprintf("Subject %d", subj));
-    ylim([0.4 1]);
-    xlim({'baseline', 'hi-v'});
-    ylabel("proportion correct");
-    xlabel("condition");
+    errorbar(x, y, ci(:,1), ci(:,2), '.-',...
+        'MarkerSize', 0.1, 'LineWidth', 1, 'Color', subjCol(i,:));
+    
+    plts = [plts p];
+    lgnd = [lgnd sprintf("Subject %d", subj)];
 end
 
 % Across Subjects
 [accGroupAll, condID] = findgroups(accTable.condID);
 [accAllSubj, accAllSubj_CI] = splitapply(@MeanCI, accTable.accBySubjCond, accGroupAll);
 
-% Plot Across Subject
-figure(2);
-hold on
+p = plot(x, accAllSubj(2:4), '.-', 'Color', 'black',...
+        'MarkerSize', 40);
+errorbar(x, accAllSubj(2:4), accAllSubj_CI(2:4,1), accAllSubj_CI(2:4,2), ...
+     '.-', 'MarkerSize', 40, 'LineWidth', 2, 'Color', 'black');
+ 
+plts = [plts p];
+lgnd = [lgnd "Subject Mean"];
 
-title("Accuracy per Condition");
-
-bar(x, accAllSubj);
-errorbar(x, accAllSubj, accAllSubj_CI(:,1), accAllSubj_CI(:,2), ...
-    'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
-scatter(accTable.condID, accTable.accBySubjCond, 50, [.3 .3 .3], 'filled', 'jitter','on', 'jitterAmount',0.25);
-
-ylim([0.5 1]);
+title("Accuracy per Condition by Subject");
+ylim([0.4 1]);
 xlim({'baseline', 'hi-v'});
 ylabel("proportion correct");
 xlabel("condition");
+legend(plts, lgnd, 'Location', 'best', 'NumColumns', 2);
+legend('boxoff');
+
+% % Plot Across Subject
+% figure(2);
+% hold on
+% 
+% title("Accuracy per Condition");
+% 
+% bar(x, accAllSubj);
+% errorbar(x, accAllSubj, accAllSubj_CI(:,1), accAllSubj_CI(:,2), ...
+%     'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
+% scatter(accTable.condID, accTable.accBySubjCond, 50, [.3 .3 .3], 'filled', 'jitter','on', 'jitterAmount',0.25);
+% 
+% ylim([0.5 1]);
+% xlim({'baseline', 'hi-v'});
+% ylabel("proportion correct");
+% xlabel("condition");
 
 %% Psychometric Curves
 % per subject
@@ -139,7 +163,7 @@ end
 figure(4)
 hold on
 
-s = 6; % subject number
+s = 4; % subject number
 subj = pct{12*s-1, 'subjID'};
 sgtitle(strcat("Psychometric Curves Example Subject - ", string(subj)));
 
@@ -167,9 +191,11 @@ for i=1:4 % cond
         x = linspace(-20, 20, 41);
         y = glmval([a;b], x, 'logit');
 
-        plot([round(a), round(a)],[0, y(x==round(a))], 'Color', clrs(cue), 'LineWidth', 2);
+        %plot([round(a), round(a)],[0, y(x==round(a))], 'Color', clrs(cue), 'LineWidth', 2);
         p = [p plot(x, y, 'Color', clrs(cue), 'LineWidth', 2)];
         scatter(bin, resp, clrs(cue), 'filled');
+        xlabel("orientation mean");
+        ylabel("probability response CW");
     end
     
     legend(p, {'L', 'N', 'R'}, 'Location', 'best');
@@ -222,19 +248,54 @@ title("Bias Index by Condition");
 bar(biasAllTable.condID, biasAllTable.biasIndxAll);
 errorbar(biasAllTable.condID, biasAllTable.biasIndxAll, errBiasAll(:,1), errBiasAll(:,2),...
     'o', 'MarkerSize', 1, 'LineWidth', 2, 'Color', 'black');
-scatter(biasTable.condID, biasTable.biasIndx, 50, 'red', 'filled', 'jitter','on', 'jitterAmount',0.25);
+scatter(biasTable.condID, biasTable.biasIndx, 50, [.3 .3 .3], 'filled', 'jitter','on', 'jitterAmount',0.25);
 
 xlim({'baseline', 'hi-v'});
 
 xlabel("condition");
 ylabel("bias index");
 
+%% Overconfidence
+[confGroup, subjID, condID, confID] = findgroups(data.subject, data.condition, data.confidence);
+accByConf = splitapply(@mean, data.accuracy, confGroup);
+
+confTable = table(subjID, condID, confID, accByConf)
+
+[confAll, condID, confID] = findgroups(confTable.condID, confTable.confID);
+[accByConfAll, accConfErr] = splitapply(@MeanCI, confTable.accByConf, confAll);
+
+confAllTable = table(condID, confID, accByConfAll, accConfErr);
+
+% plot
+hold on
+
+for i=1:4
+    if i==1
+        continue
+    end
+    
+    y = confAllTable{3*i-2:3*i, 'accByConfAll'};
+    x = confAllTable{3*i-2:3*i, 'confID'};
+    err = confAllTable{3*i-2:3*i, 'accConfErr'};
+    
+    p = [p plot(x, y, 'o--', 'LineWidth', 4)];
+    %errorbar(x, y, err(1), err(2), )
+end
+
+title("Mean Accuracy by Confidence")
+xline(-1);xline(0);xline(1);
+ylim([0.5, 1]);
+xlim([-1.1, 1.1]);
+xlabel("confidence rating");
+ylabel("mean accuracy");
+legend({'BL', 'lo-c', 'hi-v'}, 'Location', 'best');    
+    
 %% Data Analysis Functions
 
 % get mean and 95% confidence intervals
 function [xMean, xCI] = MeanCI(x)
     N = size(x,1); % determine size of data
-    
+
     xMean = mean(x); % calculate mean
     xSEM = std(x)/sqrt(N); % calculate standard error
     
