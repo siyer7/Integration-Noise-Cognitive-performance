@@ -97,23 +97,23 @@ combine = sortrows(combine,4);
 figure ('Name', 'Confidence vs Accuracy')
 
 % to plot by subject [REMOVE 'test' AS ARGUMENT FROM subject_overconf()]
-% setGlobalx(2); % set position of plot for 1st subject
-% splitapply(@subject_overconf, combine, subject_groups);
+setGlobalx(2); % set position of plot for 1st subject
+splitapply(@subject_overconf, combine, subject_groups);
 
 % to plot across subjects [ADD 'test' AS ARGUMENT TO subject_overconf()]
-setGlobalx(100);
-slopes = [];
-slopes = [slopes; subject_overconf(combine)];
-legend('red = baseline', 'blue = low-c', 'green = high-v', 'Location', 'northwest','Position',[0.2 .8 0.1 0.1])
-
-y = slopes(2:end);
-x = unique(condID);
-x = x(2:end);
-figure('Name','Conf v Acc slope, by condition')
-bar(x,y,.2);
-ylim([0 5])
-ylabel('slope (alignment) for Conf vs Acc')
-% legend('red = baseline', 'blue = low-c', 'green = high-v')
+% setGlobalx(100);
+% slopes = [];
+% slopes = [slopes; subject_overconf(combine)];
+% legend('red = baseline', 'blue = low-c', 'green = high-v', 'Location', 'northwest','Position',[0.2 .8 0.1 0.1])
+% 
+% y = slopes(2:end);
+% x = unique(condID);
+% x = x(2:end);
+% figure('Name','Conf v Acc slope, by condition')
+% bar(x,y,.2);
+% ylim([0 5])
+% ylabel('slope (alignment) for Conf vs Acc')
+% % legend('red = baseline', 'blue = low-c', 'green = high-v')
 %% Psychometric Curves
 % per subject
 % generate psychometric points
@@ -215,7 +215,7 @@ end
 
 %% Data Analysis Functions
 
-function [test] = subject_overconf(combine)
+function [] = subject_overconf(combine)
 % this function essentially takes each suject's data, and splits it by condition
 % extract data from the table 'combine'    
     cond = combine(:,1);

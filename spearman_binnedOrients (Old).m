@@ -84,36 +84,45 @@ xlabel("condition");
 %this chunk does a few preliminary stuff, then creates a relevant table,
 %and sends each subject's data @subject_overconf
 clc;
+setGlobalx(0);
+
 numSubj = size(unique(subjID), 1);
+
 % divide data by subject
 [subject_groups] = findgroups(data.subject);
-%next, since condition is stored as a string, we convert it into double and store it
-conds = double(condition(:,1)); 
-% 1 = other; 2 = baseline; 3 = low-c; 4= high-v
-% make a table with attributes, by subject
-combine = [conds, data.accuracy, data.confidence, data.orientMean, subject_groups];
-combine = sortrows(combine,4);
 
-figure ('Name', 'Confidence vs Accuracy')
+%next, since condition is stored as a string, we convert it into double and store it
+% 2 = baseline; 3 = low-c; 4= high-v
+conds = double(condition(:,1)); 
+
+% matrix with all attributes
+combine = [conds, data.accuracy, data.confidence, data.orientMean, subject_groups];
+%sort by signal (mean orientation) to facilitate binning
+combine = sortrows(combine,4);
+%keeping only those trial data where the condition is not 'other'
+combine(combine(:,1) == 1, :) = [];
+subject_groups = combine(:,5);
+conds = combine(:,1);
+
+%figure ('Name', 'Confidence vs Accuracy')
 
 % to plot by subject [REMOVE 'test' AS ARGUMENT FROM subject_overconf()]
-% setGlobalx(2); % set position of plot for 1st subject
-% splitapply(@subject_overconf, combine, subject_groups);
+setGlobalx(2); % set position of plot for 1st subject
 
+combined_differences = splitapply(@(x1){subject_overconf(x1)}, combine, subject_groups);
+combined_differences = cell2mat(combined_differences);
+%combined_differences
+[fi,xi] = ksdensity(combined_differences);
+figure()
+plot(xi,fi);
+str = sprintf('PD for differences in spearman correlation coefficient of Conf v Acc\n between the low-c & high-v conditions');
+title(str);
+xlim([-2 2]);
 % to plot across subjects [ADD 'test' AS ARGUMENT TO subject_overconf()]
-setGlobalx(100);
-slopes = [];
-slopes = [slopes; subject_overconf(combine)];
-legend('red = baseline', 'blue = low-c', 'green = high-v', 'Location', 'northwest','Position',[0.2 .8 0.1 0.1])
+% setGlobalx(100);
+% subject_overconf(combine);
 
-y = slopes(2:end);
-x = unique(condID);
-x = x(2:end);
-figure('Name','Conf v Acc slope, by condition')
-bar(x,y,.2);
-ylim([0 5])
-ylabel('slope (alignment) for Conf vs Acc')
-% legend('red = baseline', 'blue = low-c', 'green = high-v')
+%legend('red = baseline', 'blue = low-c', 'green = high-v', 'Location', 'northwest','Position',[0.2 .8 0.1 0.1])
 %% Psychometric Curves
 % per subject
 % generate psychometric points
@@ -215,7 +224,7 @@ end
 
 %% Data Analysis Functions
 
-function [test] = subject_overconf(combine)
+function [differences] = subject_overconf(combine)
 % this function essentially takes each suject's data, and splits it by condition
 % extract data from the table 'combine'    
     cond = combine(:,1);
@@ -228,92 +237,104 @@ function [test] = subject_overconf(combine)
 %form a table with attributes
     combine = [acc, conf, orientMean, condition_groups];
     count = getGlobalx; % gets location of plot for each subject
-    if(getGlobalx ~= 100)
-        subplot(ceil(4), 3, count)
-    end
+%     if(getGlobalx ~= 100)
+%         subplot(ceil(4), 3, count)
+%     end
 %for each condition in each subject, we call @condition_overconf
-    test = splitapply(@condition_overconf, combine, condition_groups);
+    all_btstrps = splitapply(@(x1){boot(x1)}, combine, condition_groups);
+    differences = all_btstrps{2} - all_btstrps{3};
+%     [fi,xi] = ksdensity(differences);
+%     figure()
+%     plot(xi,fi);
+%     xlim([-1.5 1.5]);
+
 % shifts plot location by 1 for next subject
     setGlobalx(count + 1); 
 end
 
-function [test] = condition_overconf(combine)
+function [all_btstrps] = boot(combine)
+    %test = condition_overconf(combine);
+    all_btstrps = [];
+	all_btstrps = [all_btstrps; bootstrp(100,@condition_overconf,combine)];
+%     um = bootstrp(100,@condition_overconf,combine);
+%     all_btstrps;
+%     [fi,xi] = ksdensity(um);
+%     figure()
+%     plot(xi,fi);
+%     xlim([-1.5 1.5]);
+end
+
+function [spearman] = condition_overconf(combine)
 % receives data by condition, by subject
-    test = 0;
 % extract data from table 'combine'
     acc = combine(:,1);
     conf = combine(:,2);
     orientMean = combine(:,3);
     cond = combine(1,4);
 % assigns colors to the different conditions
+    color = 'black';
     switch cond
-        case 2 % baseline
+        case 1 % baseline
             color = 'red';
-        case 3 % low-c
+        case 2 % low-c
             color = 'blue';
-        case 4 % high-v
+        case 3 % high-v
             color = 'green';
     end
-    if cond > 1 % excluding the 'other' condition        
 % dividing the signal (mean orientation) into 6* equi-depth bins
-         sz = size(orientMean,1);
-         buckets = 6;
-         cutoffs = sz/buckets;
-         iteration = 0;
-         edges = [];
-         for i = 1:length(orientMean(:,1))
-             iteration = iteration + 1;
-             remainder = floor(mod(iteration,cutoffs));
-             if(remainder == 0)
-                 edges = [edges round(orientMean(i,1))];
-             end
-         end
-         edges = unique(edges); % important
-        [N,~,bins] = histcounts(orientMean,edges);
-        bins = bins + 1; % important for accumarray to work
+    sz = size(orientMean,1);
+    buckets = 6;
+    cutoffs = sz/buckets;
+    iteration = 0;
+    edges = [];
+    for i = 1:length(orientMean(:,1))
+    	iteration = iteration + 1;
+        remainder = floor(mod(iteration,cutoffs));
+        if(remainder == 0)
+            edges = [edges round(orientMean(i,1))];
+        end
+    end
+    edges = unique(edges); % important
+    [N,~,bins] = histcounts(orientMean,edges);
+    bins = bins + 1; % important for accumarray to work
         
 % N = how many orientMeans in each bin;
 % bins = which bin each orientMean is located in, therefore its size is the size of the actual data
                 
-        % mean accuracy, mean confidence for each bin
-        meanAcc = accumarray(bins(:),acc,[],@mean);
-        meanConf = accumarray(bins(:),conf,[],@mean);
+    % mean accuracy, mean confidence for each bin
+    meanAcc = accumarray(bins(:),acc,[],@mean);
+    meanConf = accumarray(bins(:),conf,[],@mean);
 % calculations for Confidence Intervals
-        sqrtTrials = sqrt(accumarray(bins(:),orientMean,[],@length));
+    sqrtTrials = sqrt(accumarray(bins(:),orientMean,[],@length));
 % confidence
-        stddev_C = accumarray(bins(:),conf,[],@std);
+    stddev_C = accumarray(bins(:),conf,[],@std);
 % std error of confidence
-        err_C = stddev_C./sqrtTrials;
-%        err_C = transpose(err_C);       
+    err_C = stddev_C./sqrtTrials;
 % accuracy
-        stddev_A = accumarray(bins(:),acc,[],@std);
+    stddev_A = accumarray(bins(:),acc,[],@std);
 % std error of accuracy
-        err_A = stddev_A./sqrtTrials;
-        %err_A = transpose(err_A);
+    err_A = stddev_A./sqrtTrials;
 
-        scatter(meanAcc,meanConf,color,'filled')
-        hold on
-        errorbar(meanAcc, meanConf, err_C, color,'LineStyle','none');
-        errorbar(meanAcc, meanConf, err_A, color,'horizontal', 'LineStyle','none');
-        hold on
-        
-        Fit = polyfit(meanAcc,meanConf,1); % x = x data, y = y data, 1 = order of the polynomial i.e a straight line 
-        slope = Fit(1);
-        test = slope;
-        plot(meanAcc,polyval(Fit,meanAcc),color,'LineWidth',1);
-        xlim([.5 1])        
-        ylim([-1 1])        
-        xlabel('Mean Accuracy')
-        ylabel('Mean Confidence')
-        if(getGlobalx < 5) % subjects were the authors
-            title('Author ')% + (getGlobalx-1))
-        elseif(getGlobalx ~= 100)
-            title('Subject ')% + str(getGlobalx-1))
-        else
-            title('Confidence vs Accuracy')
-        end
-        %title('conf vs acc')
-    end
+%     scatter(meanAcc,meanConf,color,'filled')
+%     hold on
+%     errorbar(meanAcc, meanConf, err_C, color,'LineStyle','none');
+%     errorbar(meanAcc, meanConf, err_A, color,'horizontal', 'LineStyle','none');
+%     hold on
+%         
+%     Fit = polyfit(meanAcc,meanConf,1);
+    [spearman,PVAL] = corr(meanAcc,meanConf,'Type','Spearman');
+%     plot(meanAcc,polyval(Fit,meanAcc),color,'LineWidth',1);
+%     xlim([.5 1])        
+%     ylim([-1 1])        
+%     xlabel('Mean Accuracy')
+%     ylabel('Mean Confidence')
+%     if(getGlobalx < 5) % subjects were the authors
+%     	title('Author ')% + (getGlobalx-1))
+% 	elseif(getGlobalx ~= 100)
+%         title('Subject ')% + str(getGlobalx-1))
+%     else
+%     	title('Confidence vs Accuracy')
+%     end
 end
 
 % get mean and 95% confidence intervals
