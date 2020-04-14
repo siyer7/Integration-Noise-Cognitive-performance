@@ -2,19 +2,10 @@ Here we provide scripts to the audio recordings in each section of our poster.
 Recordings indicated by section title.
 
 ## Introduction
-xxx
+To build an intuition of these noises, let me walk you through a short example. Imagine that your friend is throwing a ball at you. If it is dark outside, you might be able to encode this information, and confidently and accurately adjust your position to catch the ball. On the other hand, if it is windy, you might not integrate this information as well, and might confidently but inaccurately adjust your position, since the ball might land far from you. Encoding noise refers to it being dark outside; integration noise refers to it being windy outside, in which case you are confident but inaccurate in your position. Note that this example is mainly for illustration purposes, and that these terminologies and definitions are not agreed upon in the field of cognitive science.
 
 ## Methods
-In our experiment, subjects have to decide whether the average orientation
-of a group of gabor patches is clockwise or counter-clockwise, w.r.t the 
-horizontal axis. We increase the encoding noise by decreasing the contrast
-in the patches. We increase the integration noise by increasing the 
-variability of orientations across the patches. To recap, the low contrast
-condition presents high encoding noise, and the high variability condition
-presents high integration noise. A 3rd baseline condition serves as a 
-control. To measure subjects’ confidence, we study their reliance on a hint
-that we provide, and also ask them to explicitly report their confidence.
-
+Our experiment had 3 conditions. We increase the integration noise by increasing the variability of orientations across the patches. We increase the encoding noise by decreasing the contrast of the patches. To recap, the high variability condition presents high integration noise, while the low contrast condition presents high encoding noise. A 3rd condition, called the baseline, serves as a control. To measure subjects’ confidence, we study their reliance on a hint that we provide, and also ask them to explicitly report their confidence. Presumably, if a subject has high high confidence in their performance, or accuracy, they will show lesser reliance on our cue, and express higher self-reported confidence.
 
 # Results
 
@@ -51,7 +42,7 @@ weak evidence that people are less able to account for integration noise
 in their confidence.
 
 ## Similar confidence-accuracy alignment in ‘high variability’ and ‘low contrast’
-xx
+Besides cue usage, we also analyzed subjects’ self-reported confidence levels. We hypothesized a greater misalignment between confidence & accuracy in the high variability, that is, high integration noise, condition. To this end, we compute the alignment, or spearman correlation, between confidence and accuracy. We then bootstrap - in simple terms, this means that we repeat this procedure a 1000 times, to create a probability distribution and sharpen our evidence. Next, we compare this correlation between the low contrast & high variability conditions. In the plot, dotted & color lines denote subject behavior, while the black line denotes the combined population behavior. We see that the difference between the 2 conditions, denoted by the x-axis, is centered very close to 0, denoted by the vertical line. This suggests that there is no significant difference between the 2 conditions. Had the black plot been centered at a positive number, instead of 0, it would suggest a misalignment in the high variability condition. In the smaller bar plot, we see that some subjects had their values centered at a positive number, and some at a negative number. Thus, we have a mixed bag of results, which does not support or reject our hypothesis with clarity.
 
 ## Discussion
 Overall, we found that subjects, on average, rely about the same or less
