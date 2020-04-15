@@ -1,7 +1,10 @@
 Here we provide scripts to the audio recordings in each section of our poster.
 Recordings indicated by section title.
 
-## Introduction (intuitions about two types of noise)
+## Introduction
+Are you confident in your decisions? Do you think you are justified in your confidence or could you potentially be overconfident? Previous findings do not quite agree on whether we are justified in our confidence. For our study, we started with a replication which found that when people are faced with a certain kind of noise their confidence tends to be less aligned with their accuracy. We looked at three different conditions which manipulated the type of noise displayed to subjects: one condition which had no noise, one which had encoding noise (making it more difficult to see), and one which had integration noise (making it more difficult to process). We predicted that people’s confidence would be misaligned when faced with integration noise. However, our results were mixed, which warrants future work. For more information about our study, feel free to click on the audio or script for each section on our poster.
+
+### Intuition about Encoding and Integration Noise
 To build an intuition of these noises, let me walk you through a short example. Imagine that your friend is throwing a ball at you. If it is dark outside, you might be able to encode this information, and confidently and accurately adjust your position to catch the ball. On the other hand, if it is windy, you might not integrate this information as well, and might confidently but inaccurately adjust your position, since the ball might land far from you. Encoding noise refers to it being dark outside; integration noise refers to it being windy outside, in which case you are confident but inaccurate in your position. Note that this example is mainly for illustration purposes, and that these terminologies and definitions are not agreed upon in the field of cognitive science.
 
 ## Methods
