@@ -141,15 +141,23 @@ hold off
 
 %% Accuracy Significance Test
 accSamp = arrayfun(@(x){cell2mat(x)}, accBySubjCond);
-accTable({"accSamp"}) = accSamp;
+accTable.accSamp = accSamp;
 
 BL_LC = [];
 BL_HV = [];
-HV_LC = [];
+LC_HV = [];
 
 for s=1:numSubj
+    bl = cell2mat(accTable{4*s-2, 'accSamp'});
+    lc = cell2mat(accTable{4*s-1, 'accSamp'});
+    hv = cell2mat(accTable{4*s, 'accSamp'});
     
+    BL_LC = [BL_LC; (1000-sum(bl-lc>0))/1000];
+    BL_HV = [BL_HV; (1000-sum(bl-hv>0))/1000];
+    LC_HV = [LC_HV; (1000-sum(lc-hv>0))/1000];
 end
+
+accSigTable = table(subjID(1:4:end), BL_LC, BL_HV,LC_HV)
 
 %% Confidence
 
@@ -160,7 +168,7 @@ end
     data.confidence, confGroup);
 
 conf = arrayfun(@(x)mean(cell2mat(x)), confBySubjCond);
-confCI = reshape(cell2mat(confBySubjCond), 2, [])';
+confCI = reshape(cell2mat(confCIBySubjCond), 2, [])';
 confTable = table(subjID, condID, conf, confCI);
 
 % Plot Within Subject
@@ -196,12 +204,12 @@ for i=1:numSubj
     lgnd = [lgnd sprintf("Subject %d", subj)];
 end
 
-yline(0.5, '--', 'Color', 'black');
+yline(0, '--', 'Color', 'black');
 
 % Across Subjects
 [confGroupAll, condID] = findgroups(confTable.condID);
 [confAllSubj] = splitapply(@(x){bootstrp(nsamp,@mean,x)},...
-    accTable.acc, accGroupAll);
+    confTable.conf, confGroupAll);
 [confCIByAllSubj] = splitapply(@(x){bootci(nsamp,@mean,x)},...
     confTable.conf, confGroupAll);
 
@@ -217,38 +225,57 @@ errorbar(x, confAll(2:4), confAllCI(2:4,1), confAllCI(2:4,2), ...
 plts = [plts p];
 lgnd = [lgnd "Subject Mean"];
 
-ylim([0.45 1]);
 xlim([0.5 3.5]);
 
 ax = gca;
 ax.TickDir = 'out';
 ax.FontSize = 16;
-ax.YTick = [0.5 0.75 1];
 ax.XTick = [1 2 3];
 ax.XTickLabel = conds;
 
-%title("Accuracy");
+title("Confidence");
 ylabel("mean confidence");
 xlabel("condition");
+
+%% Confidence Significance Test
+
+confSamp = arrayfun(@(x){cell2mat(x)}, confBySubjCond);
+confTable.confSamp = confSamp;
+
+BL_LC = [];
+BL_HV = [];
+LC_HV = [];
+
+for s=1:numSubj
+    bl = cell2mat(confTable{4*s-2, 'confSamp'});
+    lc = cell2mat(confTable{4*s-1, 'confSamp'});
+    hv = cell2mat(confTable{4*s, 'confSamp'});
+    
+    BL_LC = [BL_LC; (1000-sum(bl-lc>0))/1000];
+    BL_HV = [BL_HV; (1000-sum(bl-hv>0))/1000];
+    LC_HV = [LC_HV; (1000-sum(lc-hv>0))/1000];
+end
+
+confSigTable = table(subjID(1:4:end), BL_LC, BL_HV,LC_HV)
 
 %% Psychometric Curves and Bias Index
 [psyGroup, subjID, condID, cueID] = findgroups(...
     data.subject, data.condition, data.cue);
 [psyBySubjCond] = splitapply(@(x,y){bootstrp(nsamp,@psychofit,x,y)},...
     data.orientMean, data.responseR, psyGroup);
-[psyCIBySubjCond] = splitapply(@(x,y){bootci(nsamp,@psychofit,x,y)},...
-    data.orientMean, data.responseR, psyGroup);
+%[psyCIBySubjCond] = splitapply(@(x,y){bootci(nsamp,@psychofit,x,y)},...
+%    data.orientMean, data.responseR, psyGroup);
 
 psyTable = table(subjID, condID, cueID, psyBySubjCond);
 
-
-% Bias Index
+%% Bias Index
 [biGroup, subjID, condID] = findgroups(psyTable.subjID, psyTable.condID);
 [biBySubjCond] = splitapply(@(x,y){biasIndex(x,y)},...
     psyTable.psyBySubjCond, psyTable.cueID, biGroup);
 
-bi = arrayfun(@(x)mean(cell2mat(x)), biBySubjCond);
-biTable = table(subjID, condID, bi);
+bi = arrayfun(@(x)median(cell2mat(x)), biBySubjCond);
+biCI = cell2mat(arrayfun(@(x)biCIfun(x), biBySubjCond))
+biTable = table(subjID, condID, bi, biCI);
 
 % plot
 figure
@@ -257,10 +284,10 @@ hold on
 lgnd = [];
 plts = [];
 
-for i=1:numSubj
+for i=4:numSubj
     x = biTable{(4*i-2):(4*i), 'condID'};
     y = biTable{(4*i-2):(4*i), 'bi'};
-    %ci = biTable{(4*i-2):(4*i), 'accCI'} - y;
+    ci = biTable{(4*i-2):(4*i), 'biCI'} - y;
     subj = biTable.subjID(4*i);
     
     if any(infsub==subj)
@@ -272,8 +299,8 @@ for i=1:numSubj
         'MarkerSize', 30, 'LineWidth', 1.5);
     end
     
-%     errorbar(x+subjJit(i), y, ci(:,1), ci(:,2), '.',...
-%         'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    errorbar(x+subjJit(i), y, ci(:,1), ci(:,2), '.',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
     
     plts = [plts p];
     lgnd = [lgnd sprintf("Subject %d", subj)];
@@ -287,7 +314,7 @@ ax.FontSize = 14;
 ax.XTick = [1 2 3];
 ax.XTickLabel = conds;
 
-%ylim([-1, 4]);
+ylim([-1, 8]);
 
 title("Bias Index per Condition");
 ylabel("bias index");
@@ -296,17 +323,95 @@ legend(plts, lgnd, 'Location', 'best', 'NumColumns', 2);
 legend('boxoff');
 hold off
 
-%% Confidence/Accuracy Alignment
-[caGroup, subjID] = findgroups(data.subject);
-[caBySubjCond] = splitapply(@(x,y,z){confAccAlign(x,y,z)},...
-    data.condition, data.confidence, data.accuracy, caGroup);
-[caCIBySubjCond] = splitapply(@(x){bootci(nsamp,@mean,x)},...
-    data.accuracy, accGroup);
+%% Bias Index Significance Test
+biSamp = arrayfun(@(x){cell2mat(x)}, biBySubjCond);
+biTable.biSamp = biSamp;
 
-acc = arrayfun(@(x)mean(cell2mat(x)), accBySubjCond);
-accCI = reshape(cell2mat(accCIBySubjCond), 2, [])';
-accTable = table(subjID, condID, acc, accCI);
+BL_LC = [];
+BL_HV = [];
+LC_HV = [];
 
+for s=1:numSubj
+    bl = cell2mat(biTable{4*s-2, 'biSamp'});
+    lc = cell2mat(biTable{4*s-1, 'biSamp'});
+    hv = cell2mat(biTable{4*s, 'biSamp'});
+    
+    BL_LC = [BL_LC; (1000-sum(bl-lc>0))/1000];
+    BL_HV = [BL_HV; (1000-sum(bl-hv>0))/1000];
+    LC_HV = [LC_HV; (1000-sum(lc-hv>0))/1000];
+end
+
+biSigTable = table(subjID(1:4:end), BL_LC, BL_HV,LC_HV)
+
+%% Bias Index vs Mean Confidence 
+
+rename = {'Subj', 'Cond', 'bi','biCI','conf','confCI'};
+biconfTable = table(biTable.subjID, biTable.condID, biTable.bi,...
+    biTable.biCI, confTable.conf, confTable.confCI,...
+    'VariableNames', rename);
+
+% plot
+figure
+
+for i=1:numSubj
+    % BL
+    subplot(1,3,1);
+    title("Baseline");
+    hold on
+    
+    x = biTable{(4*i-2), 'bi'};
+    xci = biTable{(4*i-2), 'biCI'} - x;
+    y = confTable{(4*i-2), 'conf'};
+    yci = confTable{(4*i-2), 'confCI'} - y;
+    subj = biTable.subjID(4*i);
+    
+    scatter(x, y, 50, subjCol(i,:),'filled');
+    errorbar(x,y,xci(1),xci(2), 'horizontal',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    errorbar(x,y,yci(1),yci(2), 'vertical',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    
+    xlim([-1,4]);ylim([-.6,.8]);
+    ylabel("Mean confidence");xlabel("Bias index");
+    
+    % LC
+    subplot(1,3,2);
+    title("Low Contrast");
+    hold on
+    
+    x = biTable{(4*i-1), 'bi'};
+    xci = biTable{(4*i-1), 'biCI'} - x;
+    y = confTable{(4*i-1), 'conf'};
+    yci = confTable{(4*i-1), 'confCI'} - y;
+    subj = biTable.subjID(4*i);
+    
+    scatter(x, y, 50, subjCol(i,:),'filled');
+    errorbar(x,y,xci(1),xci(2), 'horizontal',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    errorbar(x,y,yci(1),yci(2), 'vertical',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    
+    xlim([-1,4]);ylim([-.6,.8]);xlabel("Bias index");
+    
+    % HV
+    subplot(1,3,3);
+    title("High Variability");
+    hold on
+    
+    x = biTable{(4*i), 'bi'};
+    xci = biTable{(4*i), 'biCI'} - x;
+    y = confTable{(4*i), 'conf'};
+    yci = confTable{(4*i), 'confCI'} - y;
+    subj = biTable.subjID(4*i);
+    
+    scatter(x, y, 50, subjCol(i,:),'filled');
+    errorbar(x,y,xci(1),xci(2), 'horizontal',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    errorbar(x,y,yci(1),yci(2), 'vertical',...
+        'MarkerSize', 0.1, 'Color', subjCol(i,:), 'CapSize', 0);
+    
+    xlim([-1,4]);ylim([-.6,.8]);xlabel("Bias index");
+end
 
 %% Analysis Functions
 
@@ -329,7 +434,16 @@ function [bi] = biasIndex(fits, cue)
     cl = fits{1};
     ch = fits{3};
     
-    bi = mean(ch(:,1)) - mean(cl(:,1));
+    bi = ch(:,1) - cl(:,1);
+end
+
+function [ci] = biCIfun(x)
+    X = sort(cell2mat(x));
+    size(X)
+    ciL = X(25);
+    ciH = X(975);
+    
+    ci = {[ciL, ciH]};
 end
 
 % calculate psychometric curve points
