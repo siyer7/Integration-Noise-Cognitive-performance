@@ -99,7 +99,7 @@ conds = double(condition(:,1));
 combine = [conds, data.accuracy, data.confidence, data.orientMean, subject_groups];
 %sort by signal (mean orientation) to facilitate binning
 combine = sortrows(combine,4);
-%retaining only lowc & highv conditions
+%retaining only baseline, lowc & highv conditions
 combine(combine(:,1) < 2, :) = [];
 subject_groups = combine(:,5);
 conds = combine(:,1);
@@ -108,76 +108,53 @@ conds = combine(:,1);
 setGlobalx(0)
 setGlobaly([])
 % stores the Probability distribution for all subjects' behavior
-figure('Name','Confidence-Accuracy alignment')
-'p_val for \Delta spearman corr under the null hypothesis'
-'Subjects'
-combined_differences = splitapply(@(x1){subject_overconf(x1)}, combine, subject_groups);
-combined_differences = cell2mat(combined_differences);
+% figure('Name','Confidence-Accuracy alignment')
+% 'p_val for \Delta spearman corr under the null hypothesis'
+% 'Subjects'
+spearmans = splitapply(@(x1){subject_overconf(x1)}, combine, subject_groups);
+
+for i = 1:10
+    sp_sub = spearmans{i};
+    %get the median and CIs
+    for j = 1:3
+        sp_sub_cond = sp_sub{j};
+        med = nanmedian(sp_sub_cond);
+        sorted_sp = sort(sp_sub_cond);
+        lb_CI = sorted_sp(25);
+        ub_CI = sorted_sp(975);
+        if (i == 1 && j == 1) % first table entry
+            sp_tbl = table(med,lb_CI,ub_CI);
+        else
+            sp_tbl = [sp_tbl; table(med,lb_CI,ub_CI)];
+        end
+    end
+end
+
+save('sp_tbl.mat', 'sp_tbl')
+
+% combined_differences = cell2mat(combined_differences);
 
 % plot PD
-[fi,xi] = ksdensity(combined_differences);
-'Combined'
-PD = [fi;xi];
-indices = find(PD(2,:) > 0);
-p_val = sum(PD(1,indices))/sum(PD(1,:))
-plot(xi,fi,'LineWidth',2.5,'Color','black');
-ax = gca;
+% [fi,xi] = ksdensity(combined_differences);
+% 'Combined'
+% PD = [fi;xi];
+% indices = find(PD(2,:) > 0);
+% p_val = sum(PD(1,indices))/sum(PD(1,:))
+% plot(xi,fi,'LineWidth',2.5,'Color','black');
+% ax = gca;
 % ax.FontSize = 20;
-xlim([-.5 1]);
-ylim([0 10]);
-xlabel('Probability distribution')
-ylabel('density')
+% xlim([-.5 1]);
+% ylim([0 10]);
+% xlabel('Probability distribution (bootstrap:1000)')
+% ylabel('density')
 % title({'Difference in Conf-Acc correlation', 'between','low contrast & high variability'})
-title({'baseline'})
 % get X at which density is max
 [maxYVal, indexAtMaxY] = max(fi);
 xValueAtMaxYVal = xi(indexAtMaxY(1));
-%
-y=cumsum(fi);y=y/y(end);
-Q2=find(y>0.5 ,1);
-hold on
-plot(xi(Q2)*[1 1],[0 fi(Q2)],'b','LineWidth',3)
-xi(Q2)*[1 1]
-hold on
-%
-% xline(xValueAtMaxYVal,'--','LineWidth',3);
-xticks([-.5 0 .5 1])
-x = [1:10];
-y = [getGlobaly];
-axes('Position',[.6 .4 .3 .3])
-b = bar(x,y);
-
-ax = gca;
-ax.XTick = [1:10];
-ax.XTickLabels = [2,3,4,5,8,9,10,11,12,13];
-
-ylabel('centering of PDs','FontSize',14)
-xlabel('subjects','FontSize',15)
-b.FaceColor = 'flat';
-for i = 1:10
-    b.CData(i,:) = [0+(i)*.07  .8-(i)*.06  1+(i)*-.08];
-end
-
-% this section is for the identity line plot
-
-% [x,y,yneg,ypos,xneg,xpos] = splitapply(@subject_overconf, combine, subject_groups);
-% 
-% name = 'Confidence-Accuracy correlation in different conditions';
-% figure('Name', name)
-% scatter(x, y);
-% hold on
-% errorbar(x,y,yneg,ypos,xneg,xpos,'LineStyle','none');
-% xlabel('Correlation in low contrast')
-% ylabel('Correlation in high variability')
-% xlim([0 .45])
-% text(.05,.44,name)
-% refline(1,0)
-
 %% Data Analysis Functions
 
-function [differences] = subject_overconf(combine)
+function [all_btstrps] = subject_overconf(combine)
 % this function essentially takes each suject's data, and splits it by condition
-% extract data from the table 'combine'    
     cond = combine(:,1);
     acc = combine(:,2);
     conf = combine(:,3);
@@ -192,41 +169,23 @@ function [differences] = subject_overconf(combine)
 	all_btstrps = splitapply(@(x1){bootstrp(1000,@condition_overconf,x1)}, combine, condition_groups);
 	
     % once we receive by-condition data, we compute PD differences between lowc and hi-v conditions
-    baseline = all_btstrps{1};
-    lowc = all_btstrps{2};
-    highv = all_btstrps{3};
-	differences = baseline;% - all_btstrps{3};
-    
-% this section is for the identity line plot
-%     [m_lowc,CI_lowc] = MeanCI(lowc);
-%     [m_highv,CI_highv] = MeanCI(highv);
-%     x = m_lowc;
-%     y = m_highv;
-%     yneg = CI_highv(:,1);
-%     ypos = CI_highv(:,2);
-%     xneg = CI_lowc(:,1);
-%     xpos = CI_lowc(:,2);
-        
-%this section is for the ksdensity plots
-    [fi,xi] = ksdensity(differences);
-    PD = [fi;xi];
-    indices = find(PD(2,:) < 0);
-    p_val = sum(PD(1,indices))/sum(PD(1,:))
-    [maxYVal, indexAtMaxY] = max(fi);
-    xValueAtMaxYVal = xi(indexAtMaxY(1));
-    %
-%     y=cumsum(fi);y=y/y(end);
-%     Q2=find(y>0.5 ,1)
+%     lowc = all_btstrps{2};
+%     highv = all_btstrps{3};
+% 	differences = lowc - highv;% - all_btstrps{3};
+  
+% %this section is for the ksdensity plots
+%     [fi,xi] = ksdensity(differences);
+%     PD = [fi;xi];
+%     indices = find(PD(2,:) < 0);
+%     p_val = sum(PD(1,indices))/sum(PD(1,:));
+%     [maxYVal, indexAtMaxY] = max(fi);
+%     xValueAtMaxYVal = xi(indexAtMaxY(1));
+%     % adding peak of PD for each subject
+%     setGlobaly([getGlobaly xValueAtMaxYVal]);
 %     hold on
-%     plot(xi(Q2)*[1 1],[0 fi(Q2)],'r')
-%     hold on
-    %
-    % adding peak of PD for each subject
-    setGlobaly([getGlobaly xValueAtMaxYVal]);
-    hold on
-    % globalx gets subject number so we can use appropriate color
-    setGlobalx(getGlobalx+1);
-    plot(xi,fi,':','LineWidth',1,'Color',[0+(getGlobalx)*.07  .8-(getGlobalx)*.06  1+(getGlobalx)*-.08]);   
+%     % globalx gets subject number so we can use appropriate color
+%     setGlobalx(getGlobalx+1);
+%     plot(xi,fi,':','LineWidth',1,'Color',[0+(getGlobalx)*.07  .8-(getGlobalx)*.06  1+(getGlobalx)*-.08]);   
 end
 
 function [spearman] = condition_overconf(combine)

@@ -118,7 +118,7 @@ points = cell2mat(points);
 
 for i = 1:2:20
     plot(points(i:i+1,1),points(i:i+1,2),':x','LineWidth',1,'MarkerIndices',(2));
-%     errorbar(points(i:i+1,1), points(i:i+1,2), points(i:i+1,5), points(i:i+1,6), points(i:i+1,3), points(i:i+1,4));
+    errorbar(points(i:i+1,1), points(i:i+1,2), points(i:i+1,5), points(i:i+1,6), points(i:i+1,3), points(i:i+1,4), 'LineStyle','none','CapSize', 0);
     text(.35, 0.25, '. = low contrast')
 	text(.35, 0.23, 'x = high variability')
     hold on
@@ -159,7 +159,6 @@ function [combo] = subject_overconf(combine)
     highv = combo{2};
     [m_lowc,CI_lowc] = MeanCI(lowc);
     [m_highv,CI_highv] = MeanCI(highv);
-%     combo = [m_lowc;m_highv];
     lowc_x_intervals = CI_lowc(:,1);
     lowc_y_intervals = CI_lowc(:,2);
     new_lowc_x_intervals = [lowc_x_intervals(1,:), lowc_x_intervals(2,:)];
@@ -170,7 +169,7 @@ function [combo] = subject_overconf(combine)
     new_highv_x_intervals = [highv_x_intervals(1,:), highv_x_intervals(2,:)];
     new_highv_y_intervals = [highv_y_intervals(1,:), highv_y_intervals(2,:)];
     highv_intervals = [new_highv_x_intervals, new_highv_y_intervals];
-    combo = [m_lowc , lowc_intervals ; m_highv, highv_intervals]
+    combo = [m_lowc , lowc_intervals ; m_highv, highv_intervals];
 end
 
 function [combo] = condition_overconf(combine)
