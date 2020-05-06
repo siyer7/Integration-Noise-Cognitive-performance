@@ -7,7 +7,7 @@ global diff;
 %% Load Data
 
 data = LoadData(); % load data
-data.cue = categorical(data.cue, [-1 0 1], {'L', 'N', 'R'}); % relabel cues
+% data.cue = categorical(data.cue, [-1 0 1], {'L', 'N', 'R'}); % relabel cues
 
 % determine conditionsx, 
 contLo = data.contrast==min(data.contrast);
@@ -92,14 +92,10 @@ numSubj = size(unique(subjID), 1);
 conds = double(condition(:,1)); 
 
 % matrix with all attributes
-data.Cue = double(data.cue);
-data.Cue(data.Cue==1) = -1;
-data.Cue(data.Cue==2) = 0;
-data.Cue(data.Cue==3) = 1; % L = -1; N = 0; R = 1
 data.orientMean(data.orientMean > 0) = 1; % correct answer = CW
 data.orientMean(data.orientMean < 0) = -1; % correct answer = CCW
 
-combine = [conds, data.Cue, data.orientMean, data.responseR, subject_groups];
+combine = [conds, data.cue, data.orientMean, data.responseR, subject_groups];
 
 %retaining only lowc & highv conditions
 combine(combine(:,1) < 2, :) = [];
